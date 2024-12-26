@@ -1,0 +1,17 @@
+BasedOnStyle: LLVM
+IndentWidth: 2
+ColumnLimit: 90
+AlignAfterOpenBracket: Align
+DerivePointerAlignment: false
+PointerAlignment: Left
+IndentAccessModifiers: false
+BreakConstructorInitializers: BeforeComma
+PackConstructorInitializers: NextLine
+Cpp11BracedListStyle: true
+SpaceBeforeCpp11BracedList: true
+AlignOperands: Align
+BreakBeforeBinaryOperators: NonAssignment
+AllowAllParametersOfDeclarationOnNextLine: false
+BinPackParameters: true
+BreakBeforeTernaryOperators: true
+BreakAfterAttributes: Always
