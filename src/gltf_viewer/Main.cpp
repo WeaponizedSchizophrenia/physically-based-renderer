@@ -1,3 +1,6 @@
+#include "App.hpp"
+#include "vkfw/vkfw.hpp"
+
 #include <filesystem>
 #include <iterator>
 #include <print>
@@ -11,8 +14,8 @@ auto main(int const argc, ArgvType const argv) -> int {
   std::span const args(std::next(argv), argc - 1);
 
   if (!args.empty()) {
-    std::filesystem::path const gltfFilePath(args.front());
-    std::println("GLTF file: {}", gltfFilePath.c_str());
+    vkfw::init();
+    app::App(args.front()).run();
   }
   return 0;
 }
