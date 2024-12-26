@@ -1,0 +1,7 @@
+add_library(pbr_engine_vulkan_include INTERFACE)
+target_compile_features(pbr_engine_vulkan_include INTERFACE cxx_std_26)
+
+target_link_libraries(pbr_engine_vulkan_include INTERFACE Vulkan::Headers)
+
+target_include_directories(pbr_engine_vulkan_include INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
+target_precompile_headers(pbr_engine_vulkan_include INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/pbr/Vulkan.hpp)
