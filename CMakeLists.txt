@@ -5,3 +5,6 @@ include(cmake/CPM.cmake)
 include(cmake/Dependencies.cmake)
 
 enable_testing()
+
+add_subdirectory(src)
+add_subdirectory(tests)
