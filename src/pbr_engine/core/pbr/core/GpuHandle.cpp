@@ -11,6 +11,13 @@
 #include <ranges>
 #include <stdexcept>
 
+#include <vulkan/vulkan_core.h>
+
+namespace constants {
+constexpr static std::array VALIDATION_LAYERS {"VK_LAYER_KHRONOS_validation"};
+constexpr static std::array DEVICE_EXTENSIONS {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+} // namespace constants
+
 namespace {
 [[nodiscard]]
 constexpr auto
@@ -25,9 +32,8 @@ createInstance(pbr::core::GpuHandleCreateInfo const& info) -> vk::UniqueInstance
       }
           .setPEnabledExtensionNames(info.extensions);
 
-  std::array const validationLayers {"VK_LAYER_KHRONOS_validation"};
   if (info.enableValidation) {
-    instanceInfo.setPEnabledLayerNames(validationLayers);
+    instanceInfo.setPEnabledLayerNames(constants::VALIDATION_LAYERS);
   }
 
   return vk::createInstanceUnique(instanceInfo);
@@ -74,7 +80,8 @@ createDevice(vk::PhysicalDevice const physicalDevice,
       .pQueuePriorities = &QUEUE_PRIORITY,
   };
   return physicalDevice.createDeviceUnique(
-      vk::DeviceCreateInfo {}.setQueueCreateInfos(queueInfo));
+      vk::DeviceCreateInfo {}.setQueueCreateInfos(queueInfo).setPEnabledExtensionNames(
+          constants::DEVICE_EXTENSIONS));
 }
 } // namespace
 

@@ -3,10 +3,6 @@
 #define VULKAN_HPP_NO_CONSTRUCTORS
 #define VULKAN_HPP_SMART_HANDLE_IMPLICIT_CAST
 
-#if VULKAN_HPP_NO_SMART_HANDLE
-#undef VULKAN_HPP_NO_SMART_HANDLE
-#endif
-
 // IWYU pragma: begin_exports
 
 #include <vulkan/vulkan.hpp>
