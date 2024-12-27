@@ -35,7 +35,7 @@ public:
   constexpr auto getQueue() const noexcept -> vk::Queue;
 };
 
-using SharedGpuHandle = std::shared_ptr<GpuHandle>;
+using SharedGpuHandle = std::shared_ptr<GpuHandle const>;
 [[nodiscard]]
 constexpr auto makeGpuHandle(GpuHandleCreateInfo const& info) -> SharedGpuHandle;
 } // namespace pbr::core
