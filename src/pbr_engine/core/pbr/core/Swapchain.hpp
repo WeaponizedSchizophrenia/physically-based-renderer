@@ -13,6 +13,17 @@
 
 namespace pbr::core {
 class Swapchain {
+  SharedGpuHandle _gpu;
+
+  vk::SurfaceFormatKHR _format;
+  vk::PresentModeKHR _presentMode;
+  vk::Extent2D _extent;
+
+  vk::UniqueSwapchainKHR _swapchain;
+
+  std::vector<vk::Image> _images;
+  std::vector<vk::UniqueImageView> _views;
+
 public:
   Swapchain(SharedGpuHandle gpu, vk::SurfaceKHR surface, vk::Extent2D extent);
 
@@ -31,16 +42,5 @@ private:
   auto getSwapchainCreateInfo(vk::SurfaceKHR surface,
                               vk::SurfaceCapabilitiesKHR capabilities) const noexcept
       -> vk::SwapchainCreateInfoKHR;
-
-  SharedGpuHandle _gpu;
-
-  vk::SurfaceFormatKHR _format;
-  vk::PresentModeKHR _presentMode;
-  vk::Extent2D _extent;
-
-  vk::UniqueSwapchainKHR _swapchain;
-
-  std::vector<vk::Image> _images;
-  std::vector<vk::UniqueImageView> _views;
 };
 } // namespace pbr::core
