@@ -7,11 +7,13 @@ target_link_libraries(tests PRIVATE
   vkfw
 
   pbr_engine_core
+  pbr_engine
 )
 
 target_sources(tests PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/Sanity_Tests.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/PbrCore_Tests.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/PbrEngine_Tests.cpp
 )
 
 list(APPEND CMAKE_MODULE_PATH ${Catch2_SOURCE_DIR}/extras)
