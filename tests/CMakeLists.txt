@@ -6,6 +6,8 @@ target_link_libraries(tests PRIVATE
   Vulkan::Headers
   vkfw
 
+  pbr_engine_vulkan_include
+  pbr_engine_utils
   pbr_engine_core
   pbr_engine
 )

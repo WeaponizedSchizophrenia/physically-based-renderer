@@ -1,8 +1,9 @@
 #include <catch2/catch_test_macros.hpp>
 
-#include "pbr/Surface.hpp"
-
+#include "pbr/utils/Conversions.hpp"
 #include "pbr/core/GpuHandle.hpp"
+
+#include "pbr/Surface.hpp"
 
 #include "vkfw/vkfw.hpp"
 
@@ -17,11 +18,7 @@ TEST_CASE("Surface creation", "[pbr]") {
       .enableValidation = true,
   });
 
-  auto const [fbWidth, fbHeight] = window->getFramebufferSize();
   pbr::Surface const surface(
       gpu, vkfw::createWindowSurfaceUnique(gpu->getInstance(), window.get()),
-      {
-          .width = static_cast<std::uint32_t>(fbWidth),
-          .height = static_cast<std::uint32_t>(fbHeight),
-      });
+      pbr::utils::toExtent(window->getFramebufferSize()));
 }

@@ -1,6 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "pbr/Vulkan.hpp"
+#include "pbr/utils/Conversions.hpp"
 
 #include "pbr/core/GpuHandle.hpp"
 #include "pbr/core/Swapchain.hpp"
@@ -37,11 +38,7 @@ TEST_CASE("Core tests", "[pbr::core]") {
   SECTION("Swapchain") {
     auto const surface =
         vkfw::createWindowSurfaceUnique(gpuHandle->getInstance(), window.get());
-    auto const [fbWidth, fbHeight] = window->getFramebufferSize();
-    vk::Extent2D const extent {
-        .width = static_cast<std::uint32_t>(fbWidth),
-        .height = static_cast<std::uint32_t>(fbHeight),
-    };
+    auto const extent = pbr::utils::toExtent(window->getFramebufferSize());
     pbr::core::Swapchain swapchain(gpuHandle, surface.get(), extent);
 
     swapchain.resize(surface.get(), extent);
