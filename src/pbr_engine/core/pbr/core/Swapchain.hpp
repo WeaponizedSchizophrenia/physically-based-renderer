@@ -36,6 +36,21 @@ public:
   [[nodiscard]]
   auto operator[](std::size_t index) const -> std::pair<vk::Image, vk::ImageView>;
 
+  [[nodiscard]]
+  constexpr auto getGpuHandle() const noexcept -> SharedGpuHandle const&;
+
+  [[nodiscard]]
+  constexpr auto getExtent() const noexcept -> vk::Extent2D;
+
+  [[nodiscard]]
+  constexpr auto getSwapchain() const noexcept -> vk::SwapchainKHR;
+
+  [[nodiscard]]
+  constexpr auto getImage(std::size_t index) const noexcept -> vk::Image;
+
+  [[nodiscard]]
+  constexpr auto getImageView(std::size_t index) const noexcept -> vk::ImageView;
+
 private:
   auto initializeViews() -> void;
   [[nodiscard]]
@@ -44,3 +59,24 @@ private:
       -> vk::SwapchainCreateInfoKHR;
 };
 } // namespace pbr::core
+
+/* IMPLEMENTATIONS */
+
+constexpr auto pbr::core::Swapchain::getGpuHandle() const noexcept -> SharedGpuHandle const& {
+  return _gpu;
+}
+
+constexpr auto pbr::core::Swapchain::getExtent() const noexcept -> vk::Extent2D {
+  return _extent;
+}
+
+constexpr auto pbr::core::Swapchain::getSwapchain() const noexcept -> vk::SwapchainKHR {
+  return _swapchain.get();
+}
+constexpr auto pbr::core::Swapchain::getImage(std::size_t index) const noexcept -> vk::Image {
+  return _images.at(index);
+}
+
+constexpr auto pbr::core::Swapchain::getImageView(std::size_t index) const noexcept -> vk::ImageView {
+  return _views.at(index).get();
+}

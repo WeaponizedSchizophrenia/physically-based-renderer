@@ -77,11 +77,6 @@ auto pbr::core::Swapchain::acquireImageIndex(
       semaphore, fence);
 }
 
-auto pbr::core::Swapchain::operator[](std::size_t const index) const
-    -> std::pair<vk::Image, vk::ImageView> {
-  return std::make_pair(_images.at(index), _views.at(index).get());
-}
-
 auto pbr::core::Swapchain::initializeViews() -> void {
   _views = _images | std::views::transform([this](vk::Image image) {
              return _gpu->getDevice().createImageViewUnique({

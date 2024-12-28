@@ -49,8 +49,9 @@ TEST_CASE("Core tests", "[pbr::core]") {
         swapchain.acquireImageIndex(semaphore.get(), nullptr, std::chrono::nanoseconds(0));
     REQUIRE(result == vk::Result::eSuccess);
 
-    auto const [image, imageView] = swapchain[index];
+    auto const image = swapchain.getImage(index);
     REQUIRE(image != nullptr);
+    auto const imageView = swapchain.getImageView(index);
     REQUIRE(imageView != nullptr);
   }
 }
