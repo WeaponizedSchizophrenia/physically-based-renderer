@@ -8,15 +8,15 @@
 #include <utility>
 
 pbr::Surface::Surface(core::SharedGpuHandle gpu, vk::UniqueSurfaceKHR surface,
-                      vk::Extent2D extent)
+                      vk::Extent2D const extent)
     : _surface(std::move(surface)), _swapchain(std::move(gpu), _surface, extent) {}
 
-auto pbr::Surface::recreateSwapchain(vk::Extent2D extent) -> void {
+auto pbr::Surface::recreateSwapchain(vk::Extent2D const extent) -> void {
   _swapchain.recreate(_surface, extent);
 }
 
-auto pbr::Surface::acquireSwapchainImageView(vk::Semaphore signalSemaphore, vk::Fence fence,
-                            std::optional<std::chrono::nanoseconds> timeout)
+auto pbr::Surface::acquireSwapchainImageView(vk::Semaphore const signalSemaphore, vk::Fence const fence,
+                            std::optional<std::chrono::nanoseconds> const timeout)
     -> std::optional<SwapchainImageView> {
   auto const [result, index] =
       _swapchain.acquireImageIndex(signalSemaphore, fence, timeout);

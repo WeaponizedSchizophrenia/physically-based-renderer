@@ -63,7 +63,7 @@ auto pbr::AsyncSubmitter::wait() -> AsyncSubmitInfo {
   return *std::exchange(_submittedInfo, std::nullopt);
 }
 
-auto pbr::AsyncSubmitter::wait(std::chrono::nanoseconds timeout) -> std::optional<AsyncSubmitInfo> {
+auto pbr::AsyncSubmitter::wait(std::chrono::nanoseconds const timeout) -> std::optional<AsyncSubmitInfo> {
   assert(_submittedInfo.has_value());
 
   auto const result = _gpu->getDevice().waitForFences(_fence.get(), vk::False, timeout.count());
