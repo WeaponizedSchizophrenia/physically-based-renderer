@@ -12,7 +12,7 @@ pbr::Surface::Surface(core::SharedGpuHandle gpu, vk::UniqueSurfaceKHR surface,
     : _surface(std::move(surface)), _swapchain(std::move(gpu), _surface, extent) {}
 
 auto pbr::Surface::recreateSwapchain(vk::Extent2D extent) -> void {
-  _swapchain.resize(_surface, extent);
+  _swapchain.recreate(_surface, extent);
 }
 
 auto pbr::Surface::acquireSwapchainImageView(vk::Semaphore signalSemaphore, vk::Fence fence,

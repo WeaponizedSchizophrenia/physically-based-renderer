@@ -41,7 +41,7 @@ TEST_CASE("Core tests", "[pbr::core]") {
     auto const extent = pbr::utils::toExtent(window->getFramebufferSize());
     pbr::core::Swapchain swapchain(gpuHandle, surface.get(), extent);
 
-    swapchain.resize(surface.get(), extent);
+    swapchain.recreate(surface.get(), extent);
 
     // Pass a semaphore into acquire next image to avoid validation errors
     auto const semaphore = gpuHandle->getDevice().createSemaphoreUnique({});

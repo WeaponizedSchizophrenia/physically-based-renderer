@@ -52,15 +52,17 @@ pbr::core::Swapchain::Swapchain(SharedGpuHandle gpu, vk::SurfaceKHR const surfac
   initializeViews();
 }
 
-auto pbr::core::Swapchain::resize(vk::SurfaceKHR const surface,
-                                  vk::Extent2D const extent) -> void {
+auto pbr::core::Swapchain::recreate(vk::SurfaceKHR const surface,
+                                    vk::Extent2D const extent) -> void {
   _format = ::chooseFormat(_gpu->getPhysicalDevice().getSurfaceFormatsKHR(surface));
   _presentMode =
       ::choosePresentMode(_gpu->getPhysicalDevice().getSurfacePresentModesKHR(surface));
   _extent = extent;
 
-  _swapchain = _gpu->getDevice().createSwapchainKHRUnique(getSwapchainCreateInfo(
-      surface, _gpu->getPhysicalDevice().getSurfaceCapabilitiesKHR(surface)));
+  _swapchain = _gpu->getDevice().createSwapchainKHRUnique(
+      getSwapchainCreateInfo(surface,
+                             _gpu->getPhysicalDevice().getSurfaceCapabilitiesKHR(surface))
+          .setOldSwapchain(_swapchain.get()));
   _images = _gpu->getDevice().getSwapchainImagesKHR(_swapchain);
 
   initializeViews();

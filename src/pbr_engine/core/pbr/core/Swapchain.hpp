@@ -27,7 +27,7 @@ class Swapchain {
 public:
   Swapchain(SharedGpuHandle gpu, vk::SurfaceKHR surface, vk::Extent2D extent);
 
-  auto resize(vk::SurfaceKHR surface, vk::Extent2D extent) -> void;
+  auto recreate(vk::SurfaceKHR surface, vk::Extent2D extent) -> void;
 
   [[nodiscard]]
   auto acquireImageIndex(vk::Semaphore semaphore, vk::Fence fence = nullptr,
