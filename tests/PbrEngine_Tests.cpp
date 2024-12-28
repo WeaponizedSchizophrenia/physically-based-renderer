@@ -154,6 +154,6 @@ TEST_CASE("Engine tests", "[pbr]") {
 
     imageView->present(clearSemaphoreHandle);
 
-    gpu->getDevice().waitIdle();
+    gpu->getQueue().waitIdle();
   }
 }
