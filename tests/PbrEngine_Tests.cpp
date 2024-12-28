@@ -55,9 +55,8 @@ TEST_CASE("Async submit", "[pbr]") {
     .cmdBuffer = std::move(cmdBuffers.front())
   };
   submitter.submit(std::move(submitInfo));
+  REQUIRE(submitter.isSubmitted());
 
-  auto const executing = submitter.isExecuting();
-  REQUIRE(executing);
   submitInfo = submitter.wait();
 
   REQUIRE(submitInfo.cmdBuffer.get() == cmdBuffer);
