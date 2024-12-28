@@ -4,6 +4,8 @@ target_compile_features(pbr_engine PUBLIC cxx_std_26)
 target_link_libraries(pbr_engine PUBLIC
   Vulkan::Vulkan
 
+  GPUOpen::VulkanMemoryAllocator
+
   pbr_engine_vulkan_include
   pbr_engine_core
 )
