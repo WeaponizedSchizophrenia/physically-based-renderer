@@ -83,8 +83,11 @@ createDevice(vk::PhysicalDevice const physicalDevice,
       vk::DeviceCreateInfo {}.setQueueCreateInfos(queueInfo).setPEnabledExtensionNames(
           constants::DEVICE_EXTENSIONS);
   vk::PhysicalDeviceSynchronization2Features const sync2 {.synchronization2 = vk::True};
+  vk::PhysicalDeviceDynamicRenderingFeatures const dynRendering {.dynamicRendering =
+                                                                     vk::True};
 
-  return physicalDevice.createDeviceUnique(vk::StructureChain {deviceInfo, sync2}.get());
+  return physicalDevice.createDeviceUnique(
+      vk::StructureChain {deviceInfo, sync2, dynRendering}.get());
 }
 } // namespace
 
