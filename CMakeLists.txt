@@ -3,6 +3,9 @@ project(PhysicallyBasedRenderer CXX)
 
 include(cmake/CPM.cmake)
 include(cmake/Dependencies.cmake)
+include(cmake/CompileShaders.cmake)
+
+compileAllShaders()
 
 enable_testing()
 
