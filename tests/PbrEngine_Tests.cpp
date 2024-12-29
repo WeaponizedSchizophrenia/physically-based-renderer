@@ -189,50 +189,6 @@ TEST_CASE("Engine tests", "[pbr]") {
     }
   }
 
-  SECTION("Staging buffer") {
-    std::array<std::byte const, 64> const data {};
-    pbr::Buffer const vertexBuffer = allocator->allocateBuffer(
-        {
-            .size = data.size(),
-            .usage = vk::BufferUsageFlagBits::eTransferDst
-                     | vk::BufferUsageFlagBits::eVertexBuffer,
-        },
-        {});
-    {
-      pbr::Buffer const stagingBuffer = allocator->allocateBuffer(
-          {
-              .size = data.size(),
-              .usage = vk::BufferUsageFlagBits::eTransferSrc,
-          },
-          {
-              .preference = pbr::AllocationPreference::Host,
-              .priority = pbr::AllocationPriority::Time,
-              .ableToBeMapped = true,
-          });
-      {
-        auto const mapping = stagingBuffer.map();
-        std::memcpy(mapping.get(), data.data(), data.size());
-      }
-
-      auto cmdBuffer =
-          std::move(gpu->getDevice()
-                        .allocateCommandBuffersUnique(
-                            {.commandPool = commandPool.get(), .commandBufferCount = 1})
-                        .front());
-
-      cmdBuffer->begin(vk::CommandBufferBeginInfo {
-          .flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
-
-      cmdBuffer->copyBuffer(stagingBuffer.getBuffer(), vertexBuffer.getBuffer(),
-                            vk::BufferCopy {.size = data.size()});
-
-      cmdBuffer->end();
-
-      pbr::AsyncSubmitter submitter(gpu);
-      submitter.submit({.cmdBuffer = std::move(cmdBuffer)});
-    }
-  }
-
   SECTION("Transfer stager") {
     std::array<std::byte const, 64> const bufferData {};
     std::array<std::byte const, 15uz * 15> const imageData {};
