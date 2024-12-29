@@ -12,6 +12,7 @@
 #include "pbr/SwapchainImageView.hpp"
 
 #include <cassert>
+#include <cstddef>
 #include <filesystem>
 #include <format>
 #include <stdexcept>
@@ -51,7 +52,11 @@ app::App::App(std::filesystem::path path)
           .queueFamilyIndex =
               _gpu->getPhysicalDeviceProperties().graphicsTransferPresentQueue,
       }))
-    , _submitter(_gpu) {}
+    , _submitter(_gpu) {
+  _window->callbacks()->on_window_resize = [this](vkfw::Window const&, std::size_t width, std::size_t height) {
+    _surface.recreateSwapchain(pbr::utils::toExtent(width, height));
+  };
+}
 
 auto app::App::run() -> void {
   while (!_window->shouldClose()) {
