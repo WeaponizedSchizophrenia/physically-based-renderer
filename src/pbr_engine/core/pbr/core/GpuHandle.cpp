@@ -79,9 +79,12 @@ createDevice(vk::PhysicalDevice const physicalDevice,
       .queueCount = 1,
       .pQueuePriorities = &QUEUE_PRIORITY,
   };
-  return physicalDevice.createDeviceUnique(
+  auto const deviceInfo =
       vk::DeviceCreateInfo {}.setQueueCreateInfos(queueInfo).setPEnabledExtensionNames(
-          constants::DEVICE_EXTENSIONS));
+          constants::DEVICE_EXTENSIONS);
+  vk::PhysicalDeviceSynchronization2Features const sync2 {.synchronization2 = vk::True};
+
+  return physicalDevice.createDeviceUnique(vk::StructureChain {deviceInfo, sync2}.get());
 }
 } // namespace
 

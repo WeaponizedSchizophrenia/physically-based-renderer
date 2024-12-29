@@ -1,9 +1,9 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include "pbr/Buffer.hpp"
+#include "pbr/TransferStager.hpp"
 #include "pbr/Vulkan.hpp"
 
-#include "pbr/memory/IAllocator.hpp"
 #include "pbr/utils/Conversions.hpp"
 
 #include "pbr/core/GpuHandle.hpp"
@@ -20,6 +20,7 @@
 #include <array>
 #include <cstddef>
 #include <cstring>
+#include <memory>
 #include <span>
 #include <utility>
 
@@ -91,8 +92,7 @@ TEST_CASE("Engine tests", "[pbr]") {
       .queueFamilyIndex = gpu->getPhysicalDeviceProperties().graphicsTransferPresentQueue,
   });
 
-  pbr::MemoryAllocator memoryAllocator(gpu);
-  pbr::IAllocator& allocator = memoryAllocator;
+  auto const allocator = std::make_shared<pbr::MemoryAllocator>(gpu);
 
   SECTION("Clear and present surface") {
     auto imageSemaphore = gpu->getDevice().createSemaphoreUnique({});
@@ -166,7 +166,7 @@ TEST_CASE("Engine tests", "[pbr]") {
 
   SECTION("Memory allocator") {
     std::array<std::byte, 64> const data {};
-    pbr::Buffer const buffer = allocator.allocateBuffer(
+    pbr::Buffer const buffer = allocator->allocateBuffer(
         vk::BufferCreateInfo {
             .size = data.size(),
             .usage = vk::BufferUsageFlagBits::eStorageBuffer,
@@ -191,7 +191,7 @@ TEST_CASE("Engine tests", "[pbr]") {
 
   SECTION("Staging buffer") {
     std::array<std::byte const, 64> const data {};
-    pbr::Buffer const vertexBuffer = allocator.allocateBuffer(
+    pbr::Buffer const vertexBuffer = allocator->allocateBuffer(
         {
             .size = data.size(),
             .usage = vk::BufferUsageFlagBits::eTransferDst
@@ -199,7 +199,7 @@ TEST_CASE("Engine tests", "[pbr]") {
         },
         {});
     {
-      pbr::Buffer const stagingBuffer = allocator.allocateBuffer(
+      pbr::Buffer const stagingBuffer = allocator->allocateBuffer(
           {
               .size = data.size(),
               .usage = vk::BufferUsageFlagBits::eTransferSrc,
@@ -231,5 +231,37 @@ TEST_CASE("Engine tests", "[pbr]") {
       pbr::AsyncSubmitter submitter(gpu);
       submitter.submit({.cmdBuffer = std::move(cmdBuffer)});
     }
+  }
+
+  SECTION("Transfer stager") {
+    std::array<std::byte const, 64> const bufferData {};
+    std::array<std::byte const, 15uz * 15> const imageData {};
+
+    pbr::TransferStager stager(gpu, allocator);
+
+    auto const bufferHandle =
+        stager.addTransfer(bufferData, vk::BufferUsageFlagBits::eStorageBuffer);
+    auto const imageHandle = stager.addTransfer(
+        imageData,
+        {
+            .imageType = vk::ImageType::e2D,
+            .format = vk::Format::eR8Unorm,
+            .extent {
+                .width = 15,
+                .height = 15,
+                .depth = 1,
+            },
+            .mipLevels = 1,
+            .arrayLayers = 1,
+            .usage = vk::ImageUsageFlagBits::eSampled,
+        },
+        vk::ImageAspectFlagBits::eColor, vk::PipelineStageFlagBits2::eFragmentShader,
+        vk::AccessFlagBits2::eShaderRead);
+
+    stager.submit(commandPool.get());
+    stager.wait();
+
+    auto const buffer = stager.get(bufferHandle);
+    auto const image = stager.get(imageHandle);
   }
 }

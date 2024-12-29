@@ -15,7 +15,7 @@ target_sources(pbr_engine PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/pbr/SwapchainImageView.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/pbr/Surface.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/pbr/AsyncSubmitter.cpp
-  ${CMAKE_CURRENT_SOURCE_DIR}/pbr/Buffer.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/pbr/TransferStager.cpp
 
   ${CMAKE_CURRENT_SOURCE_DIR}/pbr/memory/Allocation.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/pbr/memory/MemoryAllocator.cpp
