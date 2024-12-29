@@ -2,6 +2,7 @@
 
 #include "pbr/Vulkan.hpp"
 
+#include "pbr/memory/IAllocator.hpp"
 #include "pbr/utils/Conversions.hpp"
 
 #include "pbr/core/GpuHandle.hpp"
@@ -9,9 +10,16 @@
 #include "pbr/AsyncSubmitInfo.hpp"
 #include "pbr/AsyncSubmitter.hpp"
 #include "pbr/Surface.hpp"
+#include "pbr/memory/AllocationInfo.hpp"
+#include "pbr/memory/MemoryAllocator.hpp"
 
 #include "vkfw/vkfw.hpp"
 
+#include <algorithm>
+#include <array>
+#include <cstddef>
+#include <cstring>
+#include <span>
 #include <utility>
 
 TEST_CASE("Surface creation", "[pbr]") {
@@ -82,6 +90,9 @@ TEST_CASE("Engine tests", "[pbr]") {
       .queueFamilyIndex = gpu->getPhysicalDeviceProperties().graphicsTransferPresentQueue,
   });
 
+  pbr::MemoryAllocator memoryAllocator(gpu);
+  pbr::IAllocator& allocator = memoryAllocator;
+
   SECTION("Clear and present surface") {
     auto imageSemaphore = gpu->getDevice().createSemaphoreUnique({});
     auto clearSemaphore = gpu->getDevice().createSemaphoreUnique({});
@@ -98,45 +109,39 @@ TEST_CASE("Engine tests", "[pbr]") {
     cmdBuffer->begin(vk::CommandBufferBeginInfo {});
 
     { // Rendering
-    cmdBuffer->pipelineBarrier(
-      vk::PipelineStageFlagBits::eTopOfPipe,
-      vk::PipelineStageFlagBits::eColorAttachmentOutput,
-      vk::DependencyFlagBits::eByRegion,
-      {},
-      {},
-      vk::ImageMemoryBarrier {
-        .srcAccessMask = vk::AccessFlagBits::eNone,
-        .dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite,
-        .oldLayout = vk::ImageLayout::eUndefined,
-        .newLayout = vk::ImageLayout::eColorAttachmentOptimal,
-        .image = imageView->getImage(),
-        .subresourceRange {
-         .aspectMask = vk::ImageAspectFlagBits::eColor,
-         .levelCount = 1,
-         .layerCount = 1,
-        },
-      }
-    );
+      cmdBuffer->pipelineBarrier(
+          vk::PipelineStageFlagBits::eTopOfPipe,
+          vk::PipelineStageFlagBits::eColorAttachmentOutput,
+          vk::DependencyFlagBits::eByRegion, {}, {},
+          vk::ImageMemoryBarrier {
+              .srcAccessMask = vk::AccessFlagBits::eNone,
+              .dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite,
+              .oldLayout = vk::ImageLayout::eUndefined,
+              .newLayout = vk::ImageLayout::eColorAttachmentOptimal,
+              .image = imageView->getImage(),
+              .subresourceRange {
+                  .aspectMask = vk::ImageAspectFlagBits::eColor,
+                  .levelCount = 1,
+                  .layerCount = 1,
+              },
+          });
 
-    cmdBuffer->pipelineBarrier(
-      vk::PipelineStageFlagBits::eColorAttachmentOutput,
-      vk::PipelineStageFlagBits::eBottomOfPipe,
-      vk::DependencyFlagBits::eByRegion,
-      {},
-      {},
-      vk::ImageMemoryBarrier {
-        .srcAccessMask = vk::AccessFlagBits::eColorAttachmentWrite,
-        .dstAccessMask = vk::AccessFlagBits::eNone,
-        .oldLayout = vk::ImageLayout::eColorAttachmentOptimal,
-        .newLayout = vk::ImageLayout::ePresentSrcKHR,
-        .image = imageView->getImage(),
-        .subresourceRange {
-         .aspectMask = vk::ImageAspectFlagBits::eColor,
-         .levelCount = 1,
-         .layerCount = 1,
-        },
-      }
-    );
+      cmdBuffer->pipelineBarrier(
+          vk::PipelineStageFlagBits::eColorAttachmentOutput,
+          vk::PipelineStageFlagBits::eBottomOfPipe, vk::DependencyFlagBits::eByRegion, {},
+          {},
+          vk::ImageMemoryBarrier {
+              .srcAccessMask = vk::AccessFlagBits::eColorAttachmentWrite,
+              .dstAccessMask = vk::AccessFlagBits::eNone,
+              .oldLayout = vk::ImageLayout::eColorAttachmentOptimal,
+              .newLayout = vk::ImageLayout::ePresentSrcKHR,
+              .image = imageView->getImage(),
+              .subresourceRange {
+                  .aspectMask = vk::ImageAspectFlagBits::eColor,
+                  .levelCount = 1,
+                  .layerCount = 1,
+              },
+          });
     }
 
     cmdBuffer->end();
@@ -144,16 +149,42 @@ TEST_CASE("Engine tests", "[pbr]") {
     pbr::AsyncSubmitter submitter(gpu);
 
     submitter.submit({
-      .waitSemaphore = pbr::AsyncSubmitInfo::WaitSemaphore {
-        .semaphore = std::move(imageSemaphore),
-        .waitDstStageMask = vk::PipelineStageFlagBits::eTransfer,
-      },
-      .signalSemaphore = std::move(clearSemaphore),
-      .cmdBuffer = std::move(cmdBuffer),
+        .waitSemaphore =
+            pbr::AsyncSubmitInfo::WaitSemaphore {
+                .semaphore = std::move(imageSemaphore),
+                .waitDstStageMask = vk::PipelineStageFlagBits::eTransfer,
+            },
+        .signalSemaphore = std::move(clearSemaphore),
+        .cmdBuffer = std::move(cmdBuffer),
     });
 
     imageView->present(clearSemaphoreHandle);
 
     gpu->getQueue().waitIdle();
+  }
+
+  SECTION("Memory allocator") {
+    std::array<std::byte, 64> const data {};
+    auto const [alloc, buffer] = allocator.allocateBuffer(
+        vk::BufferCreateInfo {
+            .size = data.size(),
+            .usage = vk::BufferUsageFlagBits::eStorageBuffer,
+        },
+        pbr::AllocationInfo {
+            .preference = pbr::AllocationPreference::Host,
+            .ableToBeMapped = true,
+            .persistentlyMapped = true,
+        });
+    {
+      auto mapping = alloc.map();
+      std::memcpy(mapping.get(), data.data(), data.size());
+    }
+    {
+      auto mapping = alloc.map();
+      std::span<std::byte const> const mappedSpan(static_cast<std::byte*>(mapping.get()),
+                                                  data.size());
+
+      REQUIRE(std::ranges::equal(data, mappedSpan));
+    }
   }
 }
