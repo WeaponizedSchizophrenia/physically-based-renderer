@@ -2,6 +2,8 @@
 
 #include "pbr/Vulkan.hpp"
 
+#include "pbr/utils/Algorithms.hpp"
+
 #include "pbr/core/GpuHandle.hpp"
 
 #include <algorithm>
@@ -44,25 +46,27 @@ pbr::core::Swapchain::Swapchain(SharedGpuHandle gpu, vk::SurfaceKHR const surfac
     : _gpu(std::move(gpu))
     , _format(::chooseFormat(_gpu->getPhysicalDevice().getSurfaceFormatsKHR(surface)))
     , _presentMode(::choosePresentMode(
-          _gpu->getPhysicalDevice().getSurfacePresentModesKHR(surface)))
-    , _extent(extent)
-    , _swapchain(_gpu->getDevice().createSwapchainKHRUnique(getSwapchainCreateInfo(
-          surface, _gpu->getPhysicalDevice().getSurfaceCapabilitiesKHR(surface))))
-    , _images(_gpu->getDevice().getSwapchainImagesKHR(_swapchain)) {
+          _gpu->getPhysicalDevice().getSurfacePresentModesKHR(surface))) {
+  auto const surfaceCaps = _gpu->getPhysicalDevice().getSurfaceCapabilitiesKHR(surface);
+  _extent =
+      pbr::utils::clamp(extent, surfaceCaps.minImageExtent, surfaceCaps.maxImageExtent);
+  _swapchain = _gpu->getDevice().createSwapchainKHRUnique(
+      getSwapchainCreateInfo(surface, surfaceCaps));
+  _images = _gpu->getDevice().getSwapchainImagesKHR(_swapchain);
   initializeViews();
 }
 
 auto pbr::core::Swapchain::recreate(vk::SurfaceKHR const surface,
                                     vk::Extent2D const extent) -> void {
+  auto const surfaceCaps = _gpu->getPhysicalDevice().getSurfaceCapabilitiesKHR(surface);
   _format = ::chooseFormat(_gpu->getPhysicalDevice().getSurfaceFormatsKHR(surface));
   _presentMode =
       ::choosePresentMode(_gpu->getPhysicalDevice().getSurfacePresentModesKHR(surface));
-  _extent = extent;
+  _extent =
+      pbr::utils::clamp(extent, surfaceCaps.minImageExtent, surfaceCaps.maxImageExtent);
 
   _swapchain = _gpu->getDevice().createSwapchainKHRUnique(
-      getSwapchainCreateInfo(surface,
-                             _gpu->getPhysicalDevice().getSurfaceCapabilitiesKHR(surface))
-          .setOldSwapchain(_swapchain.get()));
+      getSwapchainCreateInfo(surface, surfaceCaps).setOldSwapchain(_swapchain.get()));
   _images = _gpu->getDevice().getSwapchainImagesKHR(_swapchain);
 
   initializeViews();
