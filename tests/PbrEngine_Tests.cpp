@@ -127,6 +127,25 @@ TEST_CASE("Engine tests", "[pbr]") {
               },
           });
 
+      vk::RenderingAttachmentInfo const attachmentInfo {
+          .imageView = imageView->getImageView(),
+          .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
+          .loadOp = vk::AttachmentLoadOp::eClear,
+          .storeOp = vk::AttachmentStoreOp::eStore,
+          .clearValue = vk::ClearColorValue {}.setFloat32({1.0f, 1.0f, 1.0f, 1.0f}),
+      };
+      auto const renderInfo =
+          vk::RenderingInfo {
+              .renderArea {
+                  .extent = imageView->getExtent(),
+              },
+              .layerCount = 1,
+          }
+              .setColorAttachments(attachmentInfo);
+
+      cmdBuffer->beginRendering(renderInfo);
+      cmdBuffer->endRendering();
+
       cmdBuffer->pipelineBarrier(
           vk::PipelineStageFlagBits::eColorAttachmentOutput,
           vk::PipelineStageFlagBits::eBottomOfPipe, vk::DependencyFlagBits::eByRegion, {},
