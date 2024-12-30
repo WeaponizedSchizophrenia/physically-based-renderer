@@ -18,6 +18,7 @@ target_sources(pbr_engine PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/pbr/AsyncSubmitter.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/pbr/TransferStager.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/pbr/PbrPipeline.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/pbr/MeshBuilder.cpp
 
   ${CMAKE_CURRENT_SOURCE_DIR}/pbr/memory/Allocation.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/pbr/memory/MemoryAllocator.cpp

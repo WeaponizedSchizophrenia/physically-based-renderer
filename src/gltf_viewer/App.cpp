@@ -1,5 +1,7 @@
 #include "App.hpp"
 
+#include "pbr/Mesh.hpp"
+#include "pbr/MeshBuilder.hpp"
 #include "pbr/Vulkan.hpp"
 
 #include "vkfw/vkfw.hpp"
@@ -106,16 +108,29 @@ constexpr auto createPbrPipeline(pbr::core::GpuHandle const& gpu) -> pbr::PbrPip
   };
 }
 [[nodiscard]]
-constexpr auto createVertexBuffer(pbr::core::SharedGpuHandle gpu,
+constexpr auto createTriangleMesh(pbr::core::SharedGpuHandle gpu,
                                   std::shared_ptr<pbr::IAllocator> allocator,
-                                  vk::CommandPool cmdPool) -> pbr::Buffer {
+                                  vk::CommandPool cmdPool) -> pbr::Mesh {
   pbr::TransferStager stager(std::move(gpu), std::move(allocator));
-  auto const bufferHandle =
-      stager.addTransfer(std::as_bytes(std::span(constants::TRIANGLE_VERTICES)),
-                         vk::BufferUsageFlagBits::eVertexBuffer);
+  auto builtMesh = pbr::MeshBuilder()
+                       .addPrimitive({
+                           .vertices {constants::TRIANGLE_VERTICES.begin(),
+                                      constants::TRIANGLE_VERTICES.end()},
+                           .indices {std::uint16_t(0), 1, 2},
+                       })
+                       .build();
+
+  auto const vbHandle = stager.addTransfer(std::as_bytes(std::span(builtMesh.vertices)),
+                                           vk::BufferUsageFlagBits::eVertexBuffer);
+  auto const ibHandle = stager.addTransfer(std::as_bytes(std::span(builtMesh.indices)),
+                                           vk::BufferUsageFlagBits::eIndexBuffer);
   stager.submit(cmdPool);
   stager.wait();
-  return stager.get(bufferHandle);
+  return {
+      stager.get(vbHandle),
+      stager.get(ibHandle),
+      std::move(builtMesh.primitives),
+  };
 }
 } // namespace
 
@@ -138,7 +153,7 @@ app::App::App(std::filesystem::path path)
               _gpu->getPhysicalDeviceProperties().graphicsTransferPresentQueue,
       }))
     , _pbrPipeline(::createPbrPipeline(*_gpu))
-    , _vertexBuffer(::createVertexBuffer(_gpu, _allocator, _commandPool.get()))
+    , _triangle(::createTriangleMesh(_gpu, _allocator, _commandPool.get()))
     , _submitter(_gpu) {
   _window->callbacks()->on_window_resize = [this](vkfw::Window const&, std::size_t width,
                                                   std::size_t height) {
@@ -191,7 +206,7 @@ auto app::App::recordCommands(vk::CommandBuffer cmdBuffer,
     };
     cmdBuffer.pipelineBarrier2(vk::DependencyInfo {}.setImageMemoryBarriers(barrier));
   }
-  { // clear imageView
+  { // render to imageView
     vk::RenderingAttachmentInfo const attachmentInfo {
         .imageView = imageView.getImageView(),
         .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
@@ -221,8 +236,14 @@ auto app::App::recordCommands(vk::CommandBuffer cmdBuffer,
     { // render the triangle
       cmdBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics,
                              _pbrPipeline.getPipeline());
-      cmdBuffer.bindVertexBuffers(0, _vertexBuffer.getBuffer(), {0});
-      cmdBuffer.draw(3, 1, 0, 0);
+      cmdBuffer.bindVertexBuffers(0, _triangle.getVertexBuffer().getBuffer(), {0});
+      cmdBuffer.bindIndexBuffer(_triangle.getIndexBuffer().getBuffer(), 0,
+                                vk::IndexType::eUint16);
+
+      for (auto primitive : _triangle.getPrimitives()) {
+        cmdBuffer.drawIndexed(primitive.indexCount, 1, primitive.firstIndex,
+                              static_cast<std::int32_t>(primitive.firstVertex), 0);
+      }
     }
     cmdBuffer.endRendering();
   }
