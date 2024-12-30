@@ -5,13 +5,23 @@
 #include "pbr/core/GpuHandle.hpp"
 
 #include "pbr/MeshVertex.hpp"
+#include "pbr/PbrPushConstants.hpp"
+
 #include <array>
 #include <cassert>
 
 namespace {
 [[nodiscard]]
 constexpr auto createLayout(pbr::core::GpuHandle const& gpu) -> vk::UniquePipelineLayout {
-  return gpu.getDevice().createPipelineLayoutUnique(vk::PipelineLayoutCreateInfo {});
+  std::array const pushConstantRanges {
+      vk::PushConstantRange {
+          .stageFlags = vk::ShaderStageFlagBits::eFragment,
+          .offset = 0,
+          .size = sizeof(pbr::PbrPushConstants),
+      },
+  };
+  return gpu.getDevice().createPipelineLayoutUnique(
+      vk::PipelineLayoutCreateInfo {}.setPushConstantRanges(pushConstantRanges));
 }
 [[nodiscard]]
 constexpr auto createPipeline(pbr::core::GpuHandle const& gpu, vk::PipelineLayout layout,

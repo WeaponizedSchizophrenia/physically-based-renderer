@@ -2,6 +2,7 @@
 
 #include "pbr/Mesh.hpp"
 #include "pbr/MeshBuilder.hpp"
+#include "pbr/PbrPushConstants.hpp"
 #include "pbr/Vulkan.hpp"
 
 #include "vkfw/vkfw.hpp"
@@ -263,6 +264,13 @@ auto app::App::recordCommands(vk::CommandBuffer cmdBuffer,
     { // render the triangle
       cmdBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics,
                              _pbrPipeline.getPipeline());
+      pbr::PbrPushConstants const pushConstants {
+          .color {1.0f},
+          .mixFactor = 0.5f,
+      };
+      cmdBuffer.pushConstants<pbr::PbrPushConstants>(_pbrPipeline.getPipelineLayout(),
+                                                     vk::ShaderStageFlagBits::eFragment,
+                                                     0, pushConstants);
       cmdBuffer.bindVertexBuffers(0, _mesh.getVertexBuffer().getBuffer(), {0});
       cmdBuffer.bindIndexBuffer(_mesh.getIndexBuffer().getBuffer(), 0,
                                 vk::IndexType::eUint16);
