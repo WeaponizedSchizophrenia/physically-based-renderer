@@ -34,7 +34,7 @@ class App {
 
   pbr::PbrPipeline _pbrPipeline;
 
-  pbr::Mesh _triangle;
+  pbr::Mesh _mesh;
 
   // Frame data
   pbr::AsyncSubmitter _submitter;

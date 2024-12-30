@@ -39,18 +39,41 @@
 namespace constants {
 constexpr static auto DEFAULT_WINDOW_WIDTH = 1280uz;
 constexpr static auto DEFAULT_WINDOW_HEIGHT = 720uz;
-constexpr static std::array TRIANGLE_VERTICES {pbr::MeshVertex {
-                                                   .position {-0.5f, 0.5f, 0.0f},
-                                                   .color {1.0f, 0.0f, 0.0f},
-                                               },
-                                               pbr::MeshVertex {
-                                                   .position {0.5f, 0.5f, 0.0f},
-                                                   .color {0.0f, 1.0f, 0.0f},
-                                               },
-                                               pbr::MeshVertex {
-                                                   .position {0.0f, -0.5f, 0.0f},
-                                                   .color {0.0f, 0.0f, 1.0f},
-                                               }};
+constexpr static std::array TRIANGLE_VERTICES {
+    pbr::MeshVertex {
+        .position {-1.0f, 1.0f, 0.0f},
+        .color {1.0f, 0.0f, 0.0f},
+    },
+    pbr::MeshVertex {
+        .position {1.0f, 1.0f, 0.0f},
+        .color {0.0f, 1.0f, 0.0f},
+    },
+    pbr::MeshVertex {
+        .position {-1.0f, -1.0f, 0.0f},
+        .color {0.0f, 0.0f, 1.0f},
+    },
+};
+constexpr static std::array QUAD_VERTICES {
+    pbr::MeshVertex {
+        .position {0.0f, 0.0f, 0.0f},
+        .color {1.0f},
+    },
+    pbr::MeshVertex {
+        .position {1.0f, 0.0f, 0.0f},
+        .color {1.0f},
+    },
+    pbr::MeshVertex {
+        .position {1.0f, -0.25f, 0.0f},
+        .color {1.0f},
+    },
+    pbr::MeshVertex {
+        .position {0.0f, -0.25f, 0.0f},
+        .color {1.0f},
+    },
+};
+constexpr static std::array<std::uint16_t, 6> QUAD_INDICES {
+    std::uint16_t(0), 1, 2, 0, 2, 3,
+};
 } // namespace constants
 
 namespace {
@@ -108,9 +131,9 @@ constexpr auto createPbrPipeline(pbr::core::GpuHandle const& gpu) -> pbr::PbrPip
   };
 }
 [[nodiscard]]
-constexpr auto createTriangleMesh(pbr::core::SharedGpuHandle gpu,
-                                  std::shared_ptr<pbr::IAllocator> allocator,
-                                  vk::CommandPool cmdPool) -> pbr::Mesh {
+constexpr auto createMesh(pbr::core::SharedGpuHandle gpu,
+                          std::shared_ptr<pbr::IAllocator> allocator,
+                          vk::CommandPool cmdPool) -> pbr::Mesh {
   pbr::TransferStager stager(std::move(gpu), std::move(allocator));
   auto builtMesh = pbr::MeshBuilder()
                        .addPrimitive({
@@ -118,6 +141,10 @@ constexpr auto createTriangleMesh(pbr::core::SharedGpuHandle gpu,
                                       constants::TRIANGLE_VERTICES.end()},
                            .indices {std::uint16_t(0), 1, 2},
                        })
+                       .addPrimitive({.vertices {constants::QUAD_VERTICES.begin(),
+                                                 constants::QUAD_VERTICES.end()},
+                                      .indices {constants::QUAD_INDICES.begin(),
+                                                constants::QUAD_INDICES.end()}})
                        .build();
 
   auto const vbHandle = stager.addTransfer(std::as_bytes(std::span(builtMesh.vertices)),
@@ -153,7 +180,7 @@ app::App::App(std::filesystem::path path)
               _gpu->getPhysicalDeviceProperties().graphicsTransferPresentQueue,
       }))
     , _pbrPipeline(::createPbrPipeline(*_gpu))
-    , _triangle(::createTriangleMesh(_gpu, _allocator, _commandPool.get()))
+    , _mesh(::createMesh(_gpu, _allocator, _commandPool.get()))
     , _submitter(_gpu) {
   _window->callbacks()->on_window_resize = [this](vkfw::Window const&, std::size_t width,
                                                   std::size_t height) {
@@ -212,7 +239,7 @@ auto app::App::recordCommands(vk::CommandBuffer cmdBuffer,
         .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
         .loadOp = vk::AttachmentLoadOp::eClear,
         .storeOp = vk::AttachmentStoreOp::eStore,
-        .clearValue = vk::ClearColorValue {}.setFloat32({1.0f, 1.0f, 1.0f, 1.0f}),
+        .clearValue = vk::ClearColorValue {}.setFloat32({0.0f, 0.0f, 0.0f, 1.0f}),
     };
     auto const renderInfo =
         vk::RenderingInfo {
@@ -236,11 +263,11 @@ auto app::App::recordCommands(vk::CommandBuffer cmdBuffer,
     { // render the triangle
       cmdBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics,
                              _pbrPipeline.getPipeline());
-      cmdBuffer.bindVertexBuffers(0, _triangle.getVertexBuffer().getBuffer(), {0});
-      cmdBuffer.bindIndexBuffer(_triangle.getIndexBuffer().getBuffer(), 0,
+      cmdBuffer.bindVertexBuffers(0, _mesh.getVertexBuffer().getBuffer(), {0});
+      cmdBuffer.bindIndexBuffer(_mesh.getIndexBuffer().getBuffer(), 0,
                                 vk::IndexType::eUint16);
 
-      for (auto primitive : _triangle.getPrimitives()) {
+      for (auto primitive : _mesh.getPrimitives()) {
         cmdBuffer.drawIndexed(primitive.indexCount, 1, primitive.firstIndex,
                               static_cast<std::int32_t>(primitive.firstVertex), 0);
       }
