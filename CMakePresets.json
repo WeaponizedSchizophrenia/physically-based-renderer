@@ -5,9 +5,11 @@
     {
       "name": "debug",
       "binaryDir": "${sourceDir}/build/${presetName}",
+      "generator": "Ninja",
       "cacheVariables": {
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
-        "CMAKE_CXX_FLAGS": "-Wall -Wextra -fsanitize=undefined -fsanitize=leak -fsanitize=address -fno-omit-frame-pointer"
+        "CMAKE_CXX_FLAGS": "-Wall -Wextra -fsanitize=undefined -fsanitize=leak -fsanitize=address -fno-omit-frame-pointer",
+        "CMAKE_BUILD_TYPE": "Debug"
       }
     }
   ],
