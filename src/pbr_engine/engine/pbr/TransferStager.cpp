@@ -81,10 +81,14 @@ auto pbr::TransferStager::submit(vk::CommandPool const cmdPool) -> void {
                               | std::views::join | std::ranges::to<std::vector>();
 
     auto const mapping = _stagingBuffer->map();
-    std::memcpy(mapping.get(), allBufferData.data(), allBufferData.size());
-    std::memcpy(std::next(static_cast<std::byte*>(mapping.get()),
-                          static_cast<std::ptrdiff_t>(allBufferData.size())),
-                allImageData.data(), allImageData.size());
+    if(!allBufferData.empty()) {
+      std::memcpy(mapping.get(), allBufferData.data(), allBufferData.size());
+    }
+    if(!allImageData.empty()) {
+      std::memcpy(std::next(static_cast<std::byte*>(mapping.get()),
+                            static_cast<std::ptrdiff_t>(allBufferData.size())),
+                  allImageData.data(), allImageData.size());
+    }
   }
 
   auto cmdBuffer = std::move(

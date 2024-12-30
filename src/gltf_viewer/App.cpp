@@ -9,18 +9,43 @@
 #include "pbr/core/GpuHandle.hpp"
 
 #include "pbr/AsyncSubmitInfo.hpp"
+#include "pbr/Buffer.hpp"
+#include "pbr/MeshVertex.hpp"
+#include "pbr/PbrPipeline.hpp"
 #include "pbr/SwapchainImageView.hpp"
+#include "pbr/TransferStager.hpp"
+#include "pbr/memory/IAllocator.hpp"
+#include "pbr/memory/MemoryAllocator.hpp"
 
+#include <array>
 #include <cassert>
 #include <cstddef>
+#include <cstdint>
 #include <filesystem>
 #include <format>
+#include <fstream>
+#include <ios>
+#include <memory>
+#include <span>
 #include <stdexcept>
 #include <utility>
+#include <vector>
 
 namespace constants {
 constexpr static auto DEFAULT_WINDOW_WIDTH = 1280uz;
 constexpr static auto DEFAULT_WINDOW_HEIGHT = 720uz;
+constexpr static std::array TRIANGLE_VERTICES {pbr::MeshVertex {
+                                                   .position {-0.5f, 0.5f, 0.0f},
+                                                   .color {1.0f, 0.0f, 0.0f},
+                                               },
+                                               pbr::MeshVertex {
+                                                   .position {0.5f, 0.5f, 0.0f},
+                                                   .color {0.0f, 1.0f, 0.0f},
+                                               },
+                                               pbr::MeshVertex {
+                                                   .position {0.0f, -0.5f, 0.0f},
+                                                   .color {0.0f, 0.0f, 1.0f},
+                                               }};
 } // namespace constants
 
 namespace {
@@ -34,6 +59,57 @@ constexpr auto validatePath(std::filesystem::path path) -> std::filesystem::path
   }
   return path;
 }
+[[nodiscard]]
+constexpr auto loadPbrShaders(pbr::core::GpuHandle const& gpu)
+    -> std::pair<vk::UniqueShaderModule, vk::UniqueShaderModule> {
+  auto loadBinary = [](std::filesystem::path const& path) {
+    std::ifstream file(path, std::ios::in | std::ios::binary);
+    auto const size = std::filesystem::file_size(path);
+    std::vector<std::uint32_t> binary(size / 4);
+
+    // NOLINTNEXTLINE casting to char* is not UB
+    file.read(reinterpret_cast<char*>(binary.data()), static_cast<std::streamsize>(size));
+
+    return binary;
+  };
+  auto const vertexSpv = loadBinary("assets/shaders/compiled/pbr_vertex.spv");
+  auto const fragmentSpv = loadBinary("assets/shaders/compiled/pbr_fragment.spv");
+  return std::make_pair(gpu.getDevice().createShaderModuleUnique(
+                            vk::ShaderModuleCreateInfo {}.setCode(vertexSpv)),
+                        gpu.getDevice().createShaderModuleUnique(
+                            vk::ShaderModuleCreateInfo {}.setCode(fragmentSpv)));
+}
+[[nodiscard]]
+constexpr auto createPbrPipeline(pbr::core::GpuHandle const& gpu) -> pbr::PbrPipeline {
+  auto const [vertexModule, fragmentModule] = loadPbrShaders(gpu);
+  return {
+      gpu,
+      pbr::PbrPipelineCreateInfo {
+          .vertexStage {
+              .stage = vk::ShaderStageFlagBits::eVertex,
+              .module = vertexModule.get(),
+              .pName = "main",
+          },
+          .fragmentStage {
+              .stage = vk::ShaderStageFlagBits::eFragment,
+              .module = fragmentModule.get(),
+              .pName = "main",
+          },
+      },
+  };
+}
+[[nodiscard]]
+constexpr auto createVertexBuffer(pbr::core::SharedGpuHandle gpu,
+                                  std::shared_ptr<pbr::IAllocator> allocator,
+                                  vk::CommandPool cmdPool) -> pbr::Buffer {
+  pbr::TransferStager stager(std::move(gpu), std::move(allocator));
+  auto const bufferHandle =
+      stager.addTransfer(std::as_bytes(std::span(constants::TRIANGLE_VERTICES)),
+                         vk::BufferUsageFlagBits::eVertexBuffer);
+  stager.submit(cmdPool);
+  stager.wait();
+  return stager.get(bufferHandle);
+}
 } // namespace
 
 app::App::App(std::filesystem::path path)
@@ -45,6 +121,7 @@ app::App::App(std::filesystem::path path)
           .presentPredicate = vkfw::getPhysicalDevicePresentationSupport,
           .enableValidation = true,
       }))
+    , _allocator(std::make_shared<pbr::MemoryAllocator>(_gpu))
     , _surface(_gpu, vkfw::createWindowSurfaceUnique(_gpu->getInstance(), _window.get()),
                pbr::utils::toExtent(_window->getFramebufferSize()))
     , _commandPool(_gpu->getDevice().createCommandPoolUnique({
@@ -52,8 +129,11 @@ app::App::App(std::filesystem::path path)
           .queueFamilyIndex =
               _gpu->getPhysicalDeviceProperties().graphicsTransferPresentQueue,
       }))
+    , _pbrPipeline(::createPbrPipeline(*_gpu))
+    , _vertexBuffer(::createVertexBuffer(_gpu, _allocator, _commandPool.get()))
     , _submitter(_gpu) {
-  _window->callbacks()->on_window_resize = [this](vkfw::Window const&, std::size_t width, std::size_t height) {
+  _window->callbacks()->on_window_resize = [this](vkfw::Window const&, std::size_t width,
+                                                  std::size_t height) {
     _surface.recreateSwapchain(pbr::utils::toExtent(width, height));
   };
 }
@@ -119,6 +199,21 @@ auto app::App::recordCommands(vk::CommandBuffer cmdBuffer,
             .setColorAttachments(attachmentInfo);
 
     cmdBuffer.beginRendering(renderInfo);
+    { // set scissor and viewport for imageView
+      auto const extent = imageView.getExtent();
+      cmdBuffer.setScissor(0, vk::Rect2D {.extent = extent});
+      cmdBuffer.setViewport(0, vk::Viewport {
+                                   .width = static_cast<float>(extent.width),
+                                   .height = static_cast<float>(extent.height),
+                                   .maxDepth = 1.0f,
+                               });
+    }
+    { // render the triangle
+      cmdBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics,
+                             _pbrPipeline.getPipeline());
+      cmdBuffer.bindVertexBuffers(0, _vertexBuffer.getBuffer(), {0});
+      cmdBuffer.draw(3, 1, 0, 0);
+    }
     cmdBuffer.endRendering();
   }
   { // switch imageView to presentSrc

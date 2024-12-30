@@ -8,10 +8,14 @@
 
 #include "pbr/AsyncSubmitInfo.hpp"
 #include "pbr/AsyncSubmitter.hpp"
+#include "pbr/Buffer.hpp"
+#include "pbr/PbrPipeline.hpp"
 #include "pbr/Surface.hpp"
 #include "pbr/SwapchainImageView.hpp"
+#include "pbr/memory/IAllocator.hpp"
 
 #include <filesystem>
+#include <memory>
 
 namespace app {
 class App {
@@ -19,9 +23,14 @@ class App {
   vkfw::UniqueWindow _window;
 
   pbr::core::SharedGpuHandle _gpu;
+  std::shared_ptr<pbr::IAllocator> _allocator;
   pbr::Surface _surface;
 
   vk::UniqueCommandPool _commandPool;
+
+  pbr::PbrPipeline _pbrPipeline;
+
+  pbr::Buffer _vertexBuffer;
 
   // Frame data
   pbr::AsyncSubmitter _submitter;
