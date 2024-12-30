@@ -31,6 +31,9 @@
 #include <utility>
 #include <vector>
 
+#include <spdlog/logger.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
+
 namespace constants {
 constexpr static auto DEFAULT_WINDOW_WIDTH = 1280uz;
 constexpr static auto DEFAULT_WINDOW_HEIGHT = 720uz;
@@ -49,6 +52,10 @@ constexpr static std::array TRIANGLE_VERTICES {pbr::MeshVertex {
 } // namespace constants
 
 namespace {
+[[nodiscard]]
+constexpr auto createLogger() -> std::shared_ptr<spdlog::logger> {
+  return spdlog::stdout_color_mt("app");
+}
 [[nodiscard]]
 constexpr auto validatePath(std::filesystem::path path) -> std::filesystem::path {
   if (!std::filesystem::exists(path)) {
@@ -113,7 +120,8 @@ constexpr auto createVertexBuffer(pbr::core::SharedGpuHandle gpu,
 } // namespace
 
 app::App::App(std::filesystem::path path)
-    : _path(::validatePath(std::move(path)))
+    : _logger(::createLogger())
+    , _path(::validatePath(std::move(path)))
     , _window(vkfw::createWindowUnique(constants::DEFAULT_WINDOW_WIDTH,
                                        constants::DEFAULT_WINDOW_HEIGHT, path.c_str()))
     , _gpu(pbr::core::makeGpuHandle({
@@ -136,6 +144,8 @@ app::App::App(std::filesystem::path path)
                                                   std::size_t height) {
     _surface.recreateSwapchain(pbr::utils::toExtent(width, height));
   };
+
+  _logger->info("Initialized app to view {}", _path.c_str());
 }
 
 auto app::App::run() -> void {

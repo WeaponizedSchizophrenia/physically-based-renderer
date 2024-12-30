@@ -17,8 +17,12 @@
 #include <filesystem>
 #include <memory>
 
+#include <spdlog/logger.h>
+
 namespace app {
 class App {
+  std::shared_ptr<spdlog::logger> _logger;
+
   std::filesystem::path _path;
   vkfw::UniqueWindow _window;
 
