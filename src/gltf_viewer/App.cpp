@@ -1,9 +1,5 @@
 #include "App.hpp"
 
-#include "pbr/CameraData.hpp"
-#include "pbr/Mesh.hpp"
-#include "pbr/MeshBuilder.hpp"
-#include "pbr/PbrPushConstants.hpp"
 #include "pbr/Vulkan.hpp"
 
 #include "vkfw/vkfw.hpp"
@@ -14,7 +10,11 @@
 
 #include "pbr/AsyncSubmitInfo.hpp"
 #include "pbr/Buffer.hpp"
+#include "pbr/CameraData.hpp"
+#include "pbr/Mesh.hpp"
+#include "pbr/MeshBuilder.hpp"
 #include "pbr/MeshVertex.hpp"
+#include "pbr/ModelPushConstant.hpp"
 #include "pbr/PbrPipeline.hpp"
 #include "pbr/SwapchainImageView.hpp"
 #include "pbr/TransferStager.hpp"
@@ -37,6 +37,8 @@
 
 #include <spdlog/logger.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
+
+#include <glm/ext/matrix_transform.hpp>
 
 namespace constants {
 constexpr static auto DEFAULT_WINDOW_WIDTH = 1280uz;
@@ -285,13 +287,12 @@ auto app::App::recordCommands(vk::CommandBuffer cmdBuffer,
       cmdBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
                                    _pbrPipeline.getPipelineLayout(), 0,
                                    _cameraUniform.getDescriptorSet(), {});
-      pbr::PbrPushConstants const pushConstants {
-          .color {1.0f},
-          .mixFactor = 0.5f,
+      pbr::ModelPushConstant const modelPc {
+          .model = glm::translate(glm::identity<glm::mat4x4>(), {-5.0, 0.0f, 0.0f}),
       };
-      cmdBuffer.pushConstants<pbr::PbrPushConstants>(_pbrPipeline.getPipelineLayout(),
-                                                     vk::ShaderStageFlagBits::eFragment,
-                                                     0, pushConstants);
+      cmdBuffer.pushConstants<pbr::ModelPushConstant>(_pbrPipeline.getPipelineLayout(),
+                                                      vk::ShaderStageFlagBits::eVertex,
+                                                      0, modelPc);
       cmdBuffer.bindVertexBuffers(0, _mesh.getVertexBuffer().getBuffer(), {0});
       cmdBuffer.bindIndexBuffer(_mesh.getIndexBuffer().getBuffer(), 0,
                                 vk::IndexType::eUint16);

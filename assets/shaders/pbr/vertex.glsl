@@ -5,6 +5,10 @@ layout(location = 1) in vec3 inColor;
 
 layout(location = 0) out vec3 outColor;
 
+layout(push_constant) uniform PC {
+  mat4x4 model;
+} pc;
+
 layout(set = 0, binding = 0) uniform CameraData {
   mat4x4 view;
   mat4x4 proj;
@@ -12,6 +16,6 @@ layout(set = 0, binding = 0) uniform CameraData {
 } cam;
 
 void main() {
-    gl_Position = cam.proj * cam.view * vec4(inPosition, 1.0);
+    gl_Position = cam.proj * cam.view * pc.model * vec4(inPosition, 1.0);
     outColor = inColor;
 }

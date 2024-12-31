@@ -5,15 +5,15 @@
 #include "pbr/core/GpuHandle.hpp"
 
 #include "pbr/MeshVertex.hpp"
-#include "pbr/PbrPushConstants.hpp"
+#include "pbr/ModelPushConstant.hpp"
 
 #include <array>
 #include <cassert>
 
 namespace {
 [[nodiscard]]
-constexpr auto createCameraSetLayout(pbr::core::GpuHandle const& gpu)
-    -> vk::UniqueDescriptorSetLayout {
+constexpr auto
+createCameraSetLayout(pbr::core::GpuHandle const& gpu) -> vk::UniqueDescriptorSetLayout {
   std::array const bindings {
       vk::DescriptorSetLayoutBinding {
           .binding = 0,
@@ -32,9 +32,9 @@ createLayout(pbr::core::GpuHandle const& gpu,
              vk::DescriptorSetLayout camSetLayout) -> vk::UniquePipelineLayout {
   std::array const pushConstantRanges {
       vk::PushConstantRange {
-          .stageFlags = vk::ShaderStageFlagBits::eFragment,
+          .stageFlags = vk::ShaderStageFlagBits::eVertex,
           .offset = 0,
-          .size = sizeof(pbr::PbrPushConstants),
+          .size = sizeof(pbr::ModelPushConstant),
       },
   };
   return gpu.getDevice().createPipelineLayoutUnique(
