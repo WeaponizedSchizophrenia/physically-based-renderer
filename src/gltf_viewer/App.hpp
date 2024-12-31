@@ -1,5 +1,6 @@
 #pragma once
 
+#include "pbr/CameraUniform.hpp"
 #include "pbr/Mesh.hpp"
 #include "pbr/Vulkan.hpp"
 
@@ -31,8 +32,11 @@ class App {
   pbr::Surface _surface;
 
   vk::UniqueCommandPool _commandPool;
+  vk::UniqueDescriptorPool _descPool;
 
   pbr::PbrPipeline _pbrPipeline;
+
+  pbr::CameraUniform _cameraUniform;
 
   pbr::Mesh _mesh;
 

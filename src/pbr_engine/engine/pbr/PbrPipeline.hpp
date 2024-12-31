@@ -10,12 +10,15 @@ struct PbrPipelineCreateInfo {
   vk::PipelineShaderStageCreateInfo fragmentStage;
 };
 class PbrPipeline {
+  vk::UniqueDescriptorSetLayout _cameraSetLayout;
   vk::UniquePipelineLayout _layout;
   vk::UniquePipeline _pipeline;
 
 public:
   PbrPipeline(core::GpuHandle const& gpu, PbrPipelineCreateInfo info);
 
+  [[nodiscard]]
+  constexpr auto getCameraSetLayout() const noexcept -> vk::DescriptorSetLayout;
   [[nodiscard]]
   constexpr auto getPipelineLayout() const noexcept -> vk::PipelineLayout;
   [[nodiscard]]
@@ -24,6 +27,10 @@ public:
 } // namespace pbr
 
 /* IMPLEMENTATIONS */
+
+constexpr auto pbr::PbrPipeline::getCameraSetLayout() const noexcept -> vk::DescriptorSetLayout {
+  return _cameraSetLayout.get();
+}
 
 constexpr auto pbr::PbrPipeline::getPipelineLayout() const noexcept -> vk::PipelineLayout {
   return _layout.get();

@@ -1,5 +1,6 @@
 #include "App.hpp"
 
+#include "pbr/CameraData.hpp"
 #include "pbr/Mesh.hpp"
 #include "pbr/MeshBuilder.hpp"
 #include "pbr/PbrPushConstants.hpp"
@@ -180,7 +181,24 @@ app::App::App(std::filesystem::path path)
           .queueFamilyIndex =
               _gpu->getPhysicalDeviceProperties().graphicsTransferPresentQueue,
       }))
+    , _descPool([this] {
+      std::array const sizes {
+          vk::DescriptorPoolSize {
+              .type = vk::DescriptorType::eUniformBuffer,
+              .descriptorCount = 1,
+          },
+      };
+      return _gpu->getDevice().createDescriptorPoolUnique(vk::DescriptorPoolCreateInfo {
+          .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
+          .maxSets = 1,
+      }
+                                                              .setPoolSizes(sizes));
+    }())
     , _pbrPipeline(::createPbrPipeline(*_gpu))
+    , _cameraUniform(*_gpu, *_allocator, _pbrPipeline.getCameraSetLayout(),
+                     _descPool.get(),
+                     // NOLINTNEXTLINE magic variables, random numbers i picked
+                     pbr::makeCameraData({5.0f, 3.0f, 5.0f}, {}, 1.0f, 1.7f))
     , _mesh(::createMesh(_gpu, _allocator, _commandPool.get()))
     , _submitter(_gpu) {
   _window->callbacks()->on_window_resize = [this](vkfw::Window const&, std::size_t width,
@@ -264,6 +282,9 @@ auto app::App::recordCommands(vk::CommandBuffer cmdBuffer,
     { // render the triangle
       cmdBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics,
                              _pbrPipeline.getPipeline());
+      cmdBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
+                                   _pbrPipeline.getPipelineLayout(), 0,
+                                   _cameraUniform.getDescriptorSet(), {});
       pbr::PbrPushConstants const pushConstants {
           .color {1.0f},
           .mixFactor = 0.5f,

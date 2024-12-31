@@ -12,7 +12,24 @@
 
 namespace {
 [[nodiscard]]
-constexpr auto createLayout(pbr::core::GpuHandle const& gpu) -> vk::UniquePipelineLayout {
+constexpr auto createCameraSetLayout(pbr::core::GpuHandle const& gpu)
+    -> vk::UniqueDescriptorSetLayout {
+  std::array const bindings {
+      vk::DescriptorSetLayoutBinding {
+          .binding = 0,
+          .descriptorType = vk::DescriptorType::eUniformBuffer,
+          .descriptorCount = 1,
+          .stageFlags =
+              vk::ShaderStageFlagBits::eVertex | vk::ShaderStageFlagBits::eFragment,
+      },
+  };
+  return gpu.getDevice().createDescriptorSetLayoutUnique(
+      vk::DescriptorSetLayoutCreateInfo {}.setBindings(bindings));
+}
+[[nodiscard]]
+constexpr auto
+createLayout(pbr::core::GpuHandle const& gpu,
+             vk::DescriptorSetLayout camSetLayout) -> vk::UniquePipelineLayout {
   std::array const pushConstantRanges {
       vk::PushConstantRange {
           .stageFlags = vk::ShaderStageFlagBits::eFragment,
@@ -21,7 +38,9 @@ constexpr auto createLayout(pbr::core::GpuHandle const& gpu) -> vk::UniquePipeli
       },
   };
   return gpu.getDevice().createPipelineLayoutUnique(
-      vk::PipelineLayoutCreateInfo {}.setPushConstantRanges(pushConstantRanges));
+      vk::PipelineLayoutCreateInfo {}
+          .setPushConstantRanges(pushConstantRanges)
+          .setSetLayouts(camSetLayout));
 }
 [[nodiscard]]
 constexpr auto createPipeline(pbr::core::GpuHandle const& gpu, vk::PipelineLayout layout,
@@ -88,4 +107,6 @@ constexpr auto createPipeline(pbr::core::GpuHandle const& gpu, vk::PipelineLayou
 } // namespace
 
 pbr::PbrPipeline::PbrPipeline(core::GpuHandle const& gpu, PbrPipelineCreateInfo info)
-    : _layout(::createLayout(gpu)), _pipeline(::createPipeline(gpu, _layout, info)) {}
+    : _cameraSetLayout(::createCameraSetLayout(gpu))
+    , _layout(::createLayout(gpu, _cameraSetLayout))
+    , _pipeline(::createPipeline(gpu, _layout, info)) {}
