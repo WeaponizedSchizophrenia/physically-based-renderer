@@ -65,6 +65,8 @@ constexpr auto createPipeline(pbr::core::GpuHandle const& gpu, vk::PipelineLayou
       .scissorCount = 1,
   };
   vk::PipelineRasterizationStateCreateInfo const rasterization {
+      .cullMode = vk::CullModeFlagBits::eBack,
+      .frontFace = vk::FrontFace::eClockwise,
       .lineWidth = 1.0f,
   };
   vk::PipelineMultisampleStateCreateInfo const multisample {};
