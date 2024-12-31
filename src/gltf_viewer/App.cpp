@@ -10,7 +10,6 @@
 
 #include "pbr/AsyncSubmitInfo.hpp"
 #include "pbr/Buffer.hpp"
-#include "pbr/CameraData.hpp"
 #include "pbr/Mesh.hpp"
 #include "pbr/MeshBuilder.hpp"
 #include "pbr/MeshVertex.hpp"
@@ -21,8 +20,11 @@
 #include "pbr/memory/IAllocator.hpp"
 #include "pbr/memory/MemoryAllocator.hpp"
 
+#include "CameraController.hpp"
+
 #include <array>
 #include <cassert>
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
@@ -170,6 +172,7 @@ app::App::App(std::filesystem::path path)
     , _path(::validatePath(std::move(path)))
     , _window(vkfw::createWindowUnique(constants::DEFAULT_WINDOW_WIDTH,
                                        constants::DEFAULT_WINDOW_HEIGHT, path.c_str()))
+    , _controller(_window.get())
     , _gpu(pbr::core::makeGpuHandle({
           .extensions = vkfw::getRequiredInstanceExtensions(),
           .presentPredicate = vkfw::getPhysicalDevicePresentationSupport,
@@ -198,22 +201,36 @@ app::App::App(std::filesystem::path path)
     }())
     , _pbrPipeline(::createPbrPipeline(*_gpu))
     , _cameraUniform(*_gpu, *_allocator, _pbrPipeline.getCameraSetLayout(),
-                     _descPool.get(),
-                     // NOLINTNEXTLINE magic variables, random numbers i picked
-                     pbr::makeCameraData({5.0f, 3.0f, 5.0f}, {}, 1.0f, 1.7f))
+                     _descPool.get(), _controller.getCameraData())
     , _mesh(::createMesh(_gpu, _allocator, _commandPool.get()))
     , _submitter(_gpu) {
   _window->callbacks()->on_window_resize = [this](vkfw::Window const&, std::size_t width,
                                                   std::size_t height) {
     _surface.recreateSwapchain(pbr::utils::toExtent(width, height));
+    _controller.onWindowResize(width, height);
+  };
+  _window->callbacks()->on_cursor_move = [this](vkfw::Window const&, double newX, double newY) {
+    _controller.onCursorMove(newX, newY);
+  };
+  _window->callbacks()->on_scroll = [this](vkfw::Window const&, double xOffset, double yOffset) {
+    _controller.onScroll(xOffset, yOffset);
   };
 
   _logger->info("Initialized app to view {}", _path.c_str());
 }
 
 auto app::App::run() -> void {
+  auto lastFrame = std::chrono::high_resolution_clock::now();
   while (!_window->shouldClose()) {
+    auto const thisFrame = std::chrono::high_resolution_clock::now();
+    auto const frameDuration = thisFrame - lastFrame;
+    auto const deltaTime = std::chrono::duration_cast<std::chrono::duration<double>>(frameDuration).count();
+    lastFrame = thisFrame;
+
     vkfw::pollEvents();
+
+    _controller.update(deltaTime);
+    _cameraUniform.set(_controller.getCameraData());
 
     renderAndPresent();
   }
@@ -290,9 +307,8 @@ auto app::App::recordCommands(vk::CommandBuffer cmdBuffer,
       pbr::ModelPushConstant const modelPc {
           .model = glm::translate(glm::identity<glm::mat4x4>(), {-5.0, 0.0f, 0.0f}),
       };
-      cmdBuffer.pushConstants<pbr::ModelPushConstant>(_pbrPipeline.getPipelineLayout(),
-                                                      vk::ShaderStageFlagBits::eVertex,
-                                                      0, modelPc);
+      cmdBuffer.pushConstants<pbr::ModelPushConstant>(
+          _pbrPipeline.getPipelineLayout(), vk::ShaderStageFlagBits::eVertex, 0, modelPc);
       cmdBuffer.bindVertexBuffers(0, _mesh.getVertexBuffer().getBuffer(), {0});
       cmdBuffer.bindIndexBuffer(_mesh.getIndexBuffer().getBuffer(), 0,
                                 vk::IndexType::eUint16);

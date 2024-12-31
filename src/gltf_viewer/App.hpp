@@ -15,6 +15,8 @@
 #include "pbr/SwapchainImageView.hpp"
 #include "pbr/memory/IAllocator.hpp"
 
+#include "CameraController.hpp"
+
 #include <filesystem>
 #include <memory>
 
@@ -26,6 +28,8 @@ class App {
 
   std::filesystem::path _path;
   vkfw::UniqueWindow _window;
+
+  app::CameraController _controller;
 
   pbr::core::SharedGpuHandle _gpu;
   std::shared_ptr<pbr::IAllocator> _allocator;

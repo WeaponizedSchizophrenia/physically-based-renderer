@@ -6,6 +6,7 @@ target_link_libraries(gltf_viewer PRIVATE
 
   vkfw
   spdlog
+  glm
 
   pbr_engine_vulkan_include
   pbr_engine_utils
