@@ -2,6 +2,7 @@
 
 #include "pbr/Vulkan.hpp"
 
+#include "pbr/gltf/Loader.hpp"
 #include "vkfw/vkfw.hpp"
 
 #include "pbr/utils/Conversions.hpp"
@@ -11,8 +12,6 @@
 #include "pbr/AsyncSubmitInfo.hpp"
 #include "pbr/Buffer.hpp"
 #include "pbr/Mesh.hpp"
-#include "pbr/MeshBuilder.hpp"
-#include "pbr/MeshVertex.hpp"
 #include "pbr/ModelPushConstant.hpp"
 #include "pbr/PbrPipeline.hpp"
 #include "pbr/SwapchainImageView.hpp"
@@ -32,7 +31,6 @@
 #include <fstream>
 #include <ios>
 #include <memory>
-#include <span>
 #include <stdexcept>
 #include <utility>
 #include <vector>
@@ -45,41 +43,6 @@
 namespace constants {
 constexpr static auto DEFAULT_WINDOW_WIDTH = 1280uz;
 constexpr static auto DEFAULT_WINDOW_HEIGHT = 720uz;
-constexpr static std::array TRIANGLE_VERTICES {
-    pbr::MeshVertex {
-        .position {-1.0f, 1.0f, 0.0f},
-        .color {1.0f, 0.0f, 0.0f},
-    },
-    pbr::MeshVertex {
-        .position {1.0f, 1.0f, 0.0f},
-        .color {0.0f, 1.0f, 0.0f},
-    },
-    pbr::MeshVertex {
-        .position {-1.0f, -1.0f, 0.0f},
-        .color {0.0f, 0.0f, 1.0f},
-    },
-};
-constexpr static std::array QUAD_VERTICES {
-    pbr::MeshVertex {
-        .position {0.0f, 0.0f, 0.0f},
-        .color {1.0f},
-    },
-    pbr::MeshVertex {
-        .position {1.0f, 0.0f, 0.0f},
-        .color {1.0f},
-    },
-    pbr::MeshVertex {
-        .position {1.0f, -0.25f, 0.0f},
-        .color {1.0f},
-    },
-    pbr::MeshVertex {
-        .position {0.0f, -0.25f, 0.0f},
-        .color {1.0f},
-    },
-};
-constexpr static std::array<std::uint16_t, 6> QUAD_INDICES {
-    std::uint16_t(0), 1, 2, 0, 2, 3,
-};
 } // namespace constants
 
 namespace {
@@ -137,33 +100,16 @@ constexpr auto createPbrPipeline(pbr::core::GpuHandle const& gpu) -> pbr::PbrPip
   };
 }
 [[nodiscard]]
-constexpr auto createMesh(pbr::core::SharedGpuHandle gpu,
-                          std::shared_ptr<pbr::IAllocator> allocator,
-                          vk::CommandPool cmdPool) -> pbr::Mesh {
+constexpr auto loadMesh(std::filesystem::path const& path, pbr::core::SharedGpuHandle gpu,
+                        std::shared_ptr<pbr::IAllocator> allocator,
+                        vk::CommandPool cmdPool) -> pbr::Mesh {
+  pbr::gltf::Loader loader;
+  auto asset = loader.loadAsset(path);
   pbr::TransferStager stager(std::move(gpu), std::move(allocator));
-  auto builtMesh = pbr::MeshBuilder()
-                       .addPrimitive({
-                           .vertices {constants::TRIANGLE_VERTICES.begin(),
-                                      constants::TRIANGLE_VERTICES.end()},
-                           .indices {std::uint16_t(0), 1, 2},
-                       })
-                       .addPrimitive({.vertices {constants::QUAD_VERTICES.begin(),
-                                                 constants::QUAD_VERTICES.end()},
-                                      .indices {constants::QUAD_INDICES.begin(),
-                                                constants::QUAD_INDICES.end()}})
-                       .build();
-
-  auto const vbHandle = stager.addTransfer(std::as_bytes(std::span(builtMesh.vertices)),
-                                           vk::BufferUsageFlagBits::eVertexBuffer);
-  auto const ibHandle = stager.addTransfer(std::as_bytes(std::span(builtMesh.indices)),
-                                           vk::BufferUsageFlagBits::eIndexBuffer);
+  auto const meshHandle = stager.addTransfer(asset.buildMesh(0));
   stager.submit(cmdPool);
   stager.wait();
-  return {
-      stager.get(vbHandle),
-      stager.get(ibHandle),
-      std::move(builtMesh.primitives),
-  };
+  return stager.get(meshHandle);
 }
 } // namespace
 
@@ -202,17 +148,19 @@ app::App::App(std::filesystem::path path)
     , _pbrPipeline(::createPbrPipeline(*_gpu))
     , _cameraUniform(*_gpu, *_allocator, _pbrPipeline.getCameraSetLayout(),
                      _descPool.get(), _controller.getCameraData())
-    , _mesh(::createMesh(_gpu, _allocator, _commandPool.get()))
+    , _mesh(::loadMesh(_path, _gpu, _allocator, _commandPool.get()))
     , _submitter(_gpu) {
   _window->callbacks()->on_window_resize = [this](vkfw::Window const&, std::size_t width,
                                                   std::size_t height) {
     _surface.recreateSwapchain(pbr::utils::toExtent(width, height));
     _controller.onWindowResize(width, height);
   };
-  _window->callbacks()->on_cursor_move = [this](vkfw::Window const&, double newX, double newY) {
+  _window->callbacks()->on_cursor_move = [this](vkfw::Window const&, double newX,
+                                                double newY) {
     _controller.onCursorMove(newX, newY);
   };
-  _window->callbacks()->on_scroll = [this](vkfw::Window const&, double xOffset, double yOffset) {
+  _window->callbacks()->on_scroll = [this](vkfw::Window const&, double xOffset,
+                                           double yOffset) {
     _controller.onScroll(xOffset, yOffset);
   };
 
@@ -224,7 +172,8 @@ auto app::App::run() -> void {
   while (!_window->shouldClose()) {
     auto const thisFrame = std::chrono::high_resolution_clock::now();
     auto const frameDuration = thisFrame - lastFrame;
-    auto const deltaTime = std::chrono::duration_cast<std::chrono::duration<double>>(frameDuration).count();
+    auto const deltaTime =
+        std::chrono::duration_cast<std::chrono::duration<double>>(frameDuration).count();
     lastFrame = thisFrame;
 
     vkfw::pollEvents();

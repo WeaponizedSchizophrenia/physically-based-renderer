@@ -5,11 +5,12 @@ target_link_libraries(gltf_viewer PRIVATE
   Vulkan::Vulkan
 
   vkfw
-  spdlog
-  glm
+  spdlog::spdlog
+  glm::glm
 
   pbr_engine_vulkan_include
   pbr_engine_utils
   pbr_engine_core
   pbr_engine
+  pbr_engine_gltf
 )

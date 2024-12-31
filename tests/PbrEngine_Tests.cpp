@@ -209,8 +209,8 @@ TEST_CASE("Engine tests", "[pbr]") {
   }
 
   SECTION("Transfer stager") {
-    std::array<std::byte const, 64> const bufferData {};
-    std::array<std::byte const, 15uz * 15> const imageData {};
+    std::vector<std::byte> const bufferData(64);
+    std::vector<std::byte> const imageData(15uz * 15);
 
     pbr::TransferStager stager(gpu, allocator);
 

@@ -1,8 +1,12 @@
 #include "pbr/TransferStager.hpp"
 
+#include "pbr/Mesh.hpp"
+#include "pbr/Vulkan.hpp"
+
 #include "pbr/Buffer.hpp"
 #include "pbr/Image.hpp"
-#include "pbr/Vulkan.hpp"
+#include "pbr/MeshBuilder.hpp"
+#include "pbr/MeshVertex.hpp"
 #include "pbr/core/GpuHandle.hpp"
 #include "pbr/memory/AllocationInfo.hpp"
 #include "pbr/memory/IAllocator.hpp"
@@ -13,7 +17,6 @@
 #include <iterator>
 #include <memory>
 #include <ranges>
-#include <span>
 #include <utility>
 #include <vector>
 
@@ -21,23 +24,22 @@ pbr::TransferStager::TransferStager(core::SharedGpuHandle gpu,
                                     std::shared_ptr<IAllocator> allocator)
     : _gpu(std::move(gpu)), _allocator(std::move(allocator)), _submitter(_gpu) {}
 
-auto pbr::TransferStager::addTransfer(std::span<std::byte const> const data,
-                                      vk::BufferUsageFlags const bufferUsage)
-    -> BufferHandle {
+auto pbr::TransferStager::addTransfer(
+    std::vector<std::byte> data, vk::BufferUsageFlags const bufferUsage) -> BufferHandle {
   Buffer buffer = _allocator->allocateBuffer(
       {
-          .size = data.size_bytes(),
+          .size = data.size(),
           .usage = bufferUsage | vk::BufferUsageFlagBits::eTransferDst,
       },
       {});
   BufferHandle const handle(_bufferTransfers.size(), buffer.getBuffer());
 
-  _bufferTransfers.emplace_back(data, std::move(buffer));
+  _bufferTransfers.emplace_back(std::move(data), std::move(buffer));
 
   return handle;
 }
 
-auto pbr::TransferStager::addTransfer(std::span<std::byte const> const data,
+auto pbr::TransferStager::addTransfer(std::vector<std::byte> data,
                                       vk::ImageCreateInfo imageInfo,
                                       vk::ImageAspectFlags const aspectMask,
                                       vk::PipelineStageFlags2 const dstStage,
@@ -46,20 +48,35 @@ auto pbr::TransferStager::addTransfer(std::span<std::byte const> const data,
   Image image = _allocator->allocateImage(imageInfo, {});
   ImageHandle const handle(_imageTransfers.size(), image.getImage());
 
-  _imageTransfers.emplace_back(data, std::move(image), aspectMask, imageInfo.extent,
-                               dstStage, dstAccess);
+  _imageTransfers.emplace_back(std::move(data), std::move(image), aspectMask,
+                               imageInfo.extent, dstStage, dstAccess);
 
   return handle;
+}
+
+auto pbr::TransferStager::addTransfer(MeshBuilder::BuiltMesh builtMesh) -> MeshHandle {
+  std::vector<std::byte> vertices(builtMesh.vertices.size() * sizeof(MeshVertex));
+  std::memcpy(vertices.data(), builtMesh.vertices.data(), vertices.size());
+
+  std::vector<std::byte> indices(builtMesh.indices.size() * sizeof(std::uint16_t));
+  std::memcpy(indices.data(), builtMesh.indices.data(), indices.size());
+
+  _meshTransfers.emplace_back(
+      std::move(builtMesh.primitives),
+      addTransfer(std::move(vertices), vk::BufferUsageFlagBits::eVertexBuffer),
+      addTransfer(std::move(indices), vk::BufferUsageFlagBits::eIndexBuffer));
+
+  return {_meshTransfers.size() - 1};
 }
 
 auto pbr::TransferStager::submit(vk::CommandPool const cmdPool) -> void {
   auto const totalBuffersSize = std::ranges::fold_left(
       _bufferTransfers, 0uz, [](std::size_t acc, BufferTransfer const& transfer) {
-        return acc + transfer.data.size_bytes();
+        return acc + transfer.data.size();
       });
   auto const totalImagesSize = std::ranges::fold_left(
       _imageTransfers, 0uz, [](std::size_t acc, ImageTransfer const& transfer) {
-        return acc + transfer.data.size_bytes();
+        return acc + transfer.data.size();
       });
 
   _stagingBuffer.emplace(_allocator->allocateBuffer(
@@ -81,10 +98,10 @@ auto pbr::TransferStager::submit(vk::CommandPool const cmdPool) -> void {
                               | std::views::join | std::ranges::to<std::vector>();
 
     auto const mapping = _stagingBuffer->map();
-    if(!allBufferData.empty()) {
+    if (!allBufferData.empty()) {
       std::memcpy(mapping.get(), allBufferData.data(), allBufferData.size());
     }
-    if(!allImageData.empty()) {
+    if (!allImageData.empty()) {
       std::memcpy(std::next(static_cast<std::byte*>(mapping.get()),
                             static_cast<std::ptrdiff_t>(allBufferData.size())),
                   allImageData.data(), allImageData.size());
@@ -128,9 +145,9 @@ auto pbr::TransferStager::submit(vk::CommandPool const cmdPool) -> void {
     cmdBuffer->copyBuffer(_stagingBuffer->getBuffer(), transfer.buffer.getBuffer(),
                           vk::BufferCopy {
                               .srcOffset = stagingBufferOffset,
-                              .size = transfer.data.size_bytes(),
+                              .size = transfer.data.size(),
                           });
-    stagingBufferOffset += transfer.data.size_bytes();
+    stagingBufferOffset += transfer.data.size();
   }
   for (auto const& transfer : _imageTransfers) {
     cmdBuffer->copyBufferToImage(_stagingBuffer->getBuffer(), transfer.image.getImage(),
@@ -143,7 +160,7 @@ auto pbr::TransferStager::submit(vk::CommandPool const cmdPool) -> void {
                                      },
                                      .imageExtent = transfer.extent,
                                  });
-    stagingBufferOffset += transfer.data.size_bytes();
+    stagingBufferOffset += transfer.data.size();
   }
 
   if (!_imageTransfers.empty()) {
@@ -188,4 +205,14 @@ auto pbr::TransferStager::get(BufferHandle const handle) -> Buffer {
 auto pbr::TransferStager::get(ImageHandle const handle) -> Image {
   assert(!_submitter.isExecuting());
   return std::move(_imageTransfers.at(handle.getIndex()).image);
+}
+
+auto pbr::TransferStager::get(MeshHandle const handle) -> Mesh {
+  assert(!_submitter.isExecuting());
+  auto& transfer = _meshTransfers.at(handle.getIndex());
+  return {
+      get(transfer.vertexBuffer),
+      get(transfer.indexBuffer),
+      std::move(transfer.primitives),
+  };
 }
