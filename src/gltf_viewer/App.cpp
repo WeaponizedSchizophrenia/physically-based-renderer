@@ -16,10 +16,14 @@
 #include "pbr/PbrPipeline.hpp"
 #include "pbr/SwapchainImageView.hpp"
 #include "pbr/TransferStager.hpp"
+#include "pbr/imgui/Pipeline.hpp"
+#include "pbr/imgui/Renderer.hpp"
 #include "pbr/memory/IAllocator.hpp"
 #include "pbr/memory/MemoryAllocator.hpp"
 
 #include "CameraController.hpp"
+
+#include "imgui.h"
 
 #include <array>
 #include <cassert>
@@ -32,6 +36,7 @@
 #include <ios>
 #include <memory>
 #include <stdexcept>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -47,6 +52,18 @@ constexpr static auto DEFAULT_WINDOW_HEIGHT = 720uz;
 
 namespace {
 [[nodiscard]]
+constexpr auto
+loadBinary(std::filesystem::path const& path) -> std::vector<std::uint32_t> {
+  std::ifstream file(path, std::ios::in | std::ios::binary);
+  auto const size = std::filesystem::file_size(path);
+  std::vector<std::uint32_t> binary(size / 4);
+
+  // NOLINTNEXTLINE casting to char* is not UB
+  file.read(reinterpret_cast<char*>(binary.data()), static_cast<std::streamsize>(size));
+
+  return binary;
+}
+[[nodiscard]]
 constexpr auto createLogger() -> std::shared_ptr<spdlog::logger> {
   return spdlog::stdout_color_mt("app");
 }
@@ -60,21 +77,17 @@ constexpr auto validatePath(std::filesystem::path path) -> std::filesystem::path
   }
   return path;
 }
+struct ShaderNames {
+  std::string_view vertexName {};
+  std::string_view fragmentName {};
+};
 [[nodiscard]]
-constexpr auto loadPbrShaders(pbr::core::GpuHandle const& gpu)
+constexpr auto loadShaders(pbr::core::GpuHandle const& gpu, ShaderNames names)
     -> std::pair<vk::UniqueShaderModule, vk::UniqueShaderModule> {
-  auto loadBinary = [](std::filesystem::path const& path) {
-    std::ifstream file(path, std::ios::in | std::ios::binary);
-    auto const size = std::filesystem::file_size(path);
-    std::vector<std::uint32_t> binary(size / 4);
-
-    // NOLINTNEXTLINE casting to char* is not UB
-    file.read(reinterpret_cast<char*>(binary.data()), static_cast<std::streamsize>(size));
-
-    return binary;
-  };
-  auto const vertexSpv = loadBinary("assets/shaders/compiled/pbr_vertex.spv");
-  auto const fragmentSpv = loadBinary("assets/shaders/compiled/pbr_fragment.spv");
+  auto const vertexSpv =
+      loadBinary(std::filesystem::path("assets/shaders/compiled/") / names.vertexName);
+  auto const fragmentSpv =
+      loadBinary(std::filesystem::path("assets/shaders/compiled/") / names.fragmentName);
   return std::make_pair(gpu.getDevice().createShaderModuleUnique(
                             vk::ShaderModuleCreateInfo {}.setCode(vertexSpv)),
                         gpu.getDevice().createShaderModuleUnique(
@@ -82,7 +95,8 @@ constexpr auto loadPbrShaders(pbr::core::GpuHandle const& gpu)
 }
 [[nodiscard]]
 constexpr auto createPbrPipeline(pbr::core::GpuHandle const& gpu) -> pbr::PbrPipeline {
-  auto const [vertexModule, fragmentModule] = loadPbrShaders(gpu);
+  auto const [vertexModule, fragmentModule] = loadShaders(
+      gpu, {.vertexName = "pbr_vertex.spv", .fragmentName = "pbr_fragment.spv"});
   return {
       gpu,
       pbr::PbrPipelineCreateInfo {
@@ -110,6 +124,32 @@ constexpr auto loadMesh(std::filesystem::path const& path, pbr::core::SharedGpuH
   stager.submit(cmdPool);
   stager.wait();
   return stager.get(meshHandle);
+}
+[[nodiscard]]
+constexpr auto createImguiRenderer(pbr::core::SharedGpuHandle gpu,
+                                   std::shared_ptr<pbr::IAllocator> allocator,
+                                   vk::CommandPool cmdPool) -> pbr::imgui::Renderer {
+  ImGui::CreateContext();
+  auto const [vertexModule, fragmentModule] = loadShaders(
+      *gpu, {.vertexName = "imgui_vertex.spv", .fragmentName = "imgui_fragment.spv"});
+  return {
+      std::move(gpu),
+      std::move(allocator),
+      cmdPool,
+      pbr::imgui::PipelineCreateInfo {
+          .vertexStage {
+              .stage = vk::ShaderStageFlagBits::eVertex,
+              .module = vertexModule.get(),
+              .pName = "main",
+          },
+          .fragmentStage {
+              .stage = vk::ShaderStageFlagBits::eFragment,
+              .module = fragmentModule.get(),
+              .pName = "main",
+          },
+          .outputFormat = vk::Format::eB8G8R8A8Srgb,
+      },
+  };
 }
 } // namespace
 
@@ -145,6 +185,7 @@ app::App::App(std::filesystem::path path)
       }
                                                               .setPoolSizes(sizes));
     }())
+    , _imguiRenderer(::createImguiRenderer(_gpu, _allocator, _commandPool.get()))
     , _pbrPipeline(::createPbrPipeline(*_gpu))
     , _cameraUniform(*_gpu, *_allocator, _pbrPipeline.getCameraSetLayout(),
                      _descPool.get(), _controller.getCameraData())
