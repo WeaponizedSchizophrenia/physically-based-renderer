@@ -43,6 +43,9 @@ public:
   constexpr auto getExtent() const noexcept -> vk::Extent2D;
 
   [[nodiscard]]
+  constexpr auto getFormat() const noexcept -> vk::SurfaceFormatKHR;
+
+  [[nodiscard]]
   constexpr auto getSwapchain() const noexcept -> vk::SwapchainKHR;
 
   [[nodiscard]]
@@ -68,6 +71,10 @@ constexpr auto pbr::core::Swapchain::getGpuHandle() const noexcept -> SharedGpuH
 
 constexpr auto pbr::core::Swapchain::getExtent() const noexcept -> vk::Extent2D {
   return _extent;
+}
+
+constexpr auto pbr::core::Swapchain::getFormat() const noexcept -> vk::SurfaceFormatKHR {
+  return _format;
 }
 
 constexpr auto pbr::core::Swapchain::getSwapchain() const noexcept -> vk::SwapchainKHR {

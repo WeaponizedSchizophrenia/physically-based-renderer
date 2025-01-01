@@ -19,7 +19,7 @@
 
 namespace constants {
 constexpr static vk::SurfaceFormatKHR PREFERRED_FORMAT {
-    .format = vk::Format::eB8G8R8A8Srgb,
+    .format = vk::Format::eB8G8R8A8Unorm,
     .colorSpace = vk::ColorSpaceKHR::eSrgbNonlinear,
 };
 constexpr static auto PREFERRED_PRESENT_MODE = vk::PresentModeKHR::eMailbox;

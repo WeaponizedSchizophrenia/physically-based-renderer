@@ -6,8 +6,9 @@
 
 namespace pbr {
 struct PbrPipelineCreateInfo {
-  vk::PipelineShaderStageCreateInfo vertexStage;
-  vk::PipelineShaderStageCreateInfo fragmentStage;
+  vk::PipelineShaderStageCreateInfo vertexStage {};
+  vk::PipelineShaderStageCreateInfo fragmentStage {};
+  vk::Format outputFormat {};
 };
 class PbrPipeline {
   vk::UniqueDescriptorSetLayout _cameraSetLayout;
@@ -28,11 +29,13 @@ public:
 
 /* IMPLEMENTATIONS */
 
-constexpr auto pbr::PbrPipeline::getCameraSetLayout() const noexcept -> vk::DescriptorSetLayout {
+constexpr auto
+pbr::PbrPipeline::getCameraSetLayout() const noexcept -> vk::DescriptorSetLayout {
   return _cameraSetLayout.get();
 }
 
-constexpr auto pbr::PbrPipeline::getPipelineLayout() const noexcept -> vk::PipelineLayout {
+constexpr auto
+pbr::PbrPipeline::getPipelineLayout() const noexcept -> vk::PipelineLayout {
   return _layout.get();
 }
 

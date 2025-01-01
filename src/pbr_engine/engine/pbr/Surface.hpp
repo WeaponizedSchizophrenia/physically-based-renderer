@@ -21,7 +21,16 @@ public:
 
   [[nodiscard]]
   auto acquireSwapchainImageView(vk::Semaphore signalSemaphore, vk::Fence fence = nullptr,
-                std::optional<std::chrono::nanoseconds> timeout = std::nullopt)
-      -> std::optional<SwapchainImageView>;
+                                 std::optional<std::chrono::nanoseconds> timeout =
+                                     std::nullopt) -> std::optional<SwapchainImageView>;
+
+  [[nodiscard]]
+  constexpr auto getFormat() const noexcept -> vk::SurfaceFormatKHR;
 };
 } // namespace pbr
+
+/* IMPLEMENTATION */
+
+constexpr auto pbr::Surface::getFormat() const noexcept -> vk::SurfaceFormatKHR {
+  return _swapchain.getFormat();
+}

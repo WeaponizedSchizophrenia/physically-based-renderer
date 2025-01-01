@@ -95,7 +95,8 @@ constexpr auto loadShaders(pbr::core::GpuHandle const& gpu, ShaderNames names)
                             vk::ShaderModuleCreateInfo {}.setCode(fragmentSpv)));
 }
 [[nodiscard]]
-constexpr auto createPbrPipeline(pbr::core::GpuHandle const& gpu) -> pbr::PbrPipeline {
+constexpr auto createPbrPipeline(pbr::core::GpuHandle const& gpu,
+                                 vk::Format outputFormat) -> pbr::PbrPipeline {
   auto const [vertexModule, fragmentModule] = loadShaders(
       gpu, {.vertexName = "pbr_vertex.spv", .fragmentName = "pbr_fragment.spv"});
   return {
@@ -111,6 +112,7 @@ constexpr auto createPbrPipeline(pbr::core::GpuHandle const& gpu) -> pbr::PbrPip
               .module = fragmentModule.get(),
               .pName = "main",
           },
+          .outputFormat = outputFormat,
       },
   };
 }
@@ -129,8 +131,8 @@ constexpr auto loadMesh(std::filesystem::path const& path, pbr::core::SharedGpuH
 [[nodiscard]]
 constexpr auto createImguiRenderer(pbr::core::SharedGpuHandle gpu,
                                    std::shared_ptr<pbr::IAllocator> allocator,
-                                   vkfw::Window const& window,
-                                   vk::CommandPool cmdPool) -> pbr::imgui::Renderer {
+                                   vkfw::Window const& window, vk::CommandPool cmdPool,
+                                   vk::Format outputFormat) -> pbr::imgui::Renderer {
   ImGui::CreateContext();
   ImGui_ImplGlfw_InitForOther(window, false);
   auto const [vertexModule, fragmentModule] = loadShaders(
@@ -150,7 +152,7 @@ constexpr auto createImguiRenderer(pbr::core::SharedGpuHandle gpu,
               .module = fragmentModule.get(),
               .pName = "main",
           },
-          .outputFormat = vk::Format::eB8G8R8A8Srgb,
+          .outputFormat = outputFormat,
       },
   };
 }
@@ -189,8 +191,8 @@ app::App::App(std::filesystem::path path)
                                                               .setPoolSizes(sizes));
     }())
     , _imguiRenderer(
-          ::createImguiRenderer(_gpu, _allocator, _window.get(), _commandPool.get()))
-    , _pbrPipeline(::createPbrPipeline(*_gpu))
+          ::createImguiRenderer(_gpu, _allocator, _window.get(), _commandPool.get(), _surface.getFormat().format))
+    , _pbrPipeline(::createPbrPipeline(*_gpu, _surface.getFormat().format))
     , _cameraUniform(*_gpu, *_allocator, _pbrPipeline.getCameraSetLayout(),
                      _descPool.get(), _controller.getCameraData())
     , _mesh(::loadMesh(_path, _gpu, _allocator, _commandPool.get()))

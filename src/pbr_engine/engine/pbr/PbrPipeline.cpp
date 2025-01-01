@@ -95,11 +95,8 @@ constexpr auto createPipeline(pbr::core::GpuHandle const& gpu, vk::PipelineLayou
           .layout = layout,
       }
           .setStages(shaderStages);
-  std::array const attachmentFormats {
-      vk::Format::eB8G8R8A8Srgb,
-  };
   auto const renderInfo =
-      vk::PipelineRenderingCreateInfo {}.setColorAttachmentFormats(attachmentFormats);
+      vk::PipelineRenderingCreateInfo {}.setColorAttachmentFormats(pbrInfo.outputFormat);
 
   auto [result, pipeline] = gpu.getDevice().createGraphicsPipelineUnique(
       nullptr, vk::StructureChain {info, renderInfo}.get());
