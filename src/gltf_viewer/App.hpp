@@ -14,6 +14,7 @@
 #include "pbr/Surface.hpp"
 #include "pbr/SwapchainImageView.hpp"
 #include "pbr/memory/IAllocator.hpp"
+#include "pbr/imgui/Renderer.hpp"
 
 #include "CameraController.hpp"
 
@@ -38,6 +39,8 @@ class App {
   vk::UniqueCommandPool _commandPool;
   vk::UniqueDescriptorPool _descPool;
 
+  pbr::imgui::Renderer _imguiRenderer;
+
   pbr::PbrPipeline _pbrPipeline;
 
   pbr::CameraUniform _cameraUniform;
@@ -60,6 +63,7 @@ public:
   auto run() -> void;
 
 private:
+  auto setupWindowCallbacks() -> void;
   auto makeAsyncSubmitInfo() -> pbr::AsyncSubmitInfo;
   auto recordCommands(vk::CommandBuffer, pbr::SwapchainImageView) -> void;
   auto renderAndPresent() -> void;

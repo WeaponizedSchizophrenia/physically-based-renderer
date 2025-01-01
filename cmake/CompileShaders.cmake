@@ -16,6 +16,10 @@ endfunction()
 
 function(compileAllShaders)
     message("Compiling shaders")
+    # PBR
     compileShader("pbr/vertex.glsl" "pbr_vertex" "vertex")
     compileShader("pbr/fragment.glsl" "pbr_fragment" "fragment")
+    # Imgui
+    compileShader("imgui/vertex.glsl" "imgui_vertex" "vertex")
+    compileShader("imgui/fragment.glsl" "imgui_fragment" "fragment")
 endfunction()
