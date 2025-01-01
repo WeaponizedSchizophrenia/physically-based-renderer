@@ -63,6 +63,7 @@ public:
   auto run() -> void;
 
 private:
+  auto setupWindowCallbacks() -> void;
   auto makeAsyncSubmitInfo() -> pbr::AsyncSubmitInfo;
   auto recordCommands(vk::CommandBuffer, pbr::SwapchainImageView) -> void;
   auto renderAndPresent() -> void;
