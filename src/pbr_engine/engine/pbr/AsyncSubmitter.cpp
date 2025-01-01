@@ -16,7 +16,7 @@ pbr::AsyncSubmitter::AsyncSubmitter(core::SharedGpuHandle gpu)
           {.flags = vk::FenceCreateFlagBits::eSignaled})) {}
 
 pbr::AsyncSubmitter::~AsyncSubmitter() noexcept {
-  if(isSubmitted()) {
+  if (isSubmitted()) {
     wait();
   }
 }
@@ -56,18 +56,20 @@ auto pbr::AsyncSubmitter::isExecuting() const -> bool {
 
 auto pbr::AsyncSubmitter::wait() -> AsyncSubmitInfo {
   assert(_submittedInfo.has_value());
-  assert(_gpu->getDevice().waitForFences(_fence.get(), vk::False,
-                                         std::numeric_limits<std::uint64_t>::max())
-         == vk::Result::eSuccess);
+  auto const result = _gpu->getDevice().waitForFences(
+      _fence.get(), vk::False, std::numeric_limits<std::uint64_t>::max());
+  assert(result == vk::Result::eSuccess);
 
   return *std::exchange(_submittedInfo, std::nullopt);
 }
 
-auto pbr::AsyncSubmitter::wait(std::chrono::nanoseconds const timeout) -> std::optional<AsyncSubmitInfo> {
+auto pbr::AsyncSubmitter::wait(std::chrono::nanoseconds const timeout)
+    -> std::optional<AsyncSubmitInfo> {
   assert(_submittedInfo.has_value());
 
-  auto const result = _gpu->getDevice().waitForFences(_fence.get(), vk::False, timeout.count());
-  if(result == vk::Result::eSuccess) {
+  auto const result =
+      _gpu->getDevice().waitForFences(_fence.get(), vk::False, timeout.count());
+  if (result == vk::Result::eSuccess) {
     return std::exchange(_submittedInfo, std::nullopt);
   } else {
     return std::nullopt;

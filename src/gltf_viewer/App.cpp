@@ -190,8 +190,9 @@ app::App::App(std::filesystem::path path)
       }
                                                               .setPoolSizes(sizes));
     }())
-    , _imguiRenderer(
-          ::createImguiRenderer(_gpu, _allocator, _window.get(), _commandPool.get(), _surface.getFormat().format))
+    , _imguiRenderer(::createImguiRenderer(_gpu, _allocator, _window.get(),
+                                           _commandPool.get(),
+                                           _surface.getFormat().format))
     , _pbrPipeline(::createPbrPipeline(*_gpu, _surface.getFormat().format))
     , _cameraUniform(*_gpu, *_allocator, _pbrPipeline.getCameraSetLayout(),
                      _descPool.get(), _controller.getCameraData())
