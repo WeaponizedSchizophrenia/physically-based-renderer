@@ -22,7 +22,7 @@ class Renderer {
   vk::DescriptorSet _descSet;
 
 public:
-  explicit Renderer(core::SharedGpuHandle gpu, std::shared_ptr<IAllocator> allocator,
+  Renderer(core::SharedGpuHandle gpu, std::shared_ptr<IAllocator> allocator,
                     vk::CommandPool cmdPool, PipelineCreateInfo info);
 };
 } // namespace pbr::imgui
