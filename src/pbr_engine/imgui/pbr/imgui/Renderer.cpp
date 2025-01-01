@@ -66,16 +66,16 @@ createDescriptorPool(pbr::core::GpuHandle const& gpu) -> vk::UniqueDescriptorPoo
                                                         .setPoolSizes(size));
 }
 [[nodiscard]]
-constexpr auto
-createDescriptorSet(pbr::core::GpuHandle const& gpu, pbr::imgui::Pipeline const& pipeline,
-                    vk::DescriptorPool descPool) -> vk::UniqueDescriptorSet {
+constexpr auto createDescriptorSet(pbr::core::GpuHandle const& gpu,
+                                   pbr::imgui::Pipeline const& pipeline,
+                                   vk::DescriptorPool descPool) -> vk::DescriptorSet {
   auto const layout = pipeline.getFontSamplerLayout();
-  return std::move(gpu.getDevice()
-                       .allocateDescriptorSetsUnique(vk::DescriptorSetAllocateInfo {
-                           .descriptorPool = descPool,
-                       }
-                                                         .setSetLayouts(layout))
-                       .front());
+  return gpu.getDevice()
+      .allocateDescriptorSets(vk::DescriptorSetAllocateInfo {
+          .descriptorPool = descPool,
+      }
+                                  .setSetLayouts(layout))
+      .front();
 }
 } // namespace
 
