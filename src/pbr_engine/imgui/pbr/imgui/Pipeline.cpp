@@ -76,7 +76,7 @@ constexpr auto createPipeline(pbr::core::GpuHandle const& gpu, vk::PipelineLayou
       .viewportCount = 1,
       .scissorCount = 1,
   };
-  vk::PipelineRasterizationStateCreateInfo const rasterization {};
+  vk::PipelineRasterizationStateCreateInfo const rasterization {.lineWidth = 1.0f};
   vk::PipelineMultisampleStateCreateInfo const multisample {};
   vk::PipelineColorBlendAttachmentState const colorBlendAttachment {
       .blendEnable = vk::True,
