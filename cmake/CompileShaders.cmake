@@ -9,7 +9,7 @@ function(compileShader shader_path compiled_name stage)
     message("Compiling ${stage} shader ${shader_path} to ${compiled_shader_path}")
 
     execute_process(
-        COMMAND glslc "-fshader-stage=${stage}" ${shader_path} "-o" ${compiled_shader_path}
+      COMMAND glslc "-O" "-fshader-stage=${stage}" ${shader_path} "-o" ${compiled_shader_path}
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/assets/shaders
     )
 endfunction()
