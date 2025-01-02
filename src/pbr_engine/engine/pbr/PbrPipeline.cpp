@@ -9,6 +9,7 @@
 
 #include <array>
 #include <cassert>
+#include <span>
 
 namespace {
 [[nodiscard]]
@@ -27,9 +28,23 @@ createCameraSetLayout(pbr::core::GpuHandle const& gpu) -> vk::UniqueDescriptorSe
       vk::DescriptorSetLayoutCreateInfo {}.setBindings(bindings));
 }
 [[nodiscard]]
-constexpr auto
-createLayout(pbr::core::GpuHandle const& gpu,
-             vk::DescriptorSetLayout camSetLayout) -> vk::UniquePipelineLayout {
+constexpr auto createMaterialSetLayout(pbr::core::GpuHandle const& gpu)
+    -> vk::UniqueDescriptorSetLayout {
+  std::array const bindings {
+      vk::DescriptorSetLayoutBinding {
+          .binding = 0,
+          .descriptorType = vk::DescriptorType::eUniformBuffer,
+          .descriptorCount = 1,
+          .stageFlags = vk::ShaderStageFlagBits::eFragment,
+      },
+  };
+  return gpu.getDevice().createDescriptorSetLayoutUnique(
+      vk::DescriptorSetLayoutCreateInfo {}.setBindings(bindings));
+}
+[[nodiscard]]
+constexpr auto createLayout(pbr::core::GpuHandle const& gpu,
+                            std::span<vk::DescriptorSetLayout const> setLayouts)
+    -> vk::UniquePipelineLayout {
   std::array const pushConstantRanges {
       vk::PushConstantRange {
           .stageFlags = vk::ShaderStageFlagBits::eVertex,
@@ -40,7 +55,7 @@ createLayout(pbr::core::GpuHandle const& gpu,
   return gpu.getDevice().createPipelineLayoutUnique(
       vk::PipelineLayoutCreateInfo {}
           .setPushConstantRanges(pushConstantRanges)
-          .setSetLayouts(camSetLayout));
+          .setSetLayouts(setLayouts));
 }
 [[nodiscard]]
 constexpr auto createPipeline(pbr::core::GpuHandle const& gpu, vk::PipelineLayout layout,
@@ -107,5 +122,7 @@ constexpr auto createPipeline(pbr::core::GpuHandle const& gpu, vk::PipelineLayou
 
 pbr::PbrPipeline::PbrPipeline(core::GpuHandle const& gpu, PbrPipelineCreateInfo info)
     : _cameraSetLayout(::createCameraSetLayout(gpu))
-    , _layout(::createLayout(gpu, _cameraSetLayout))
+    , _materialSetLayout(::createMaterialSetLayout(gpu))
+    , _layout(::createLayout(
+          gpu, std::array {_cameraSetLayout.get(), _materialSetLayout.get()}))
     , _pipeline(::createPipeline(gpu, _layout, info)) {}

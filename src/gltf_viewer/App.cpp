@@ -181,12 +181,12 @@ app::App::App(std::filesystem::path path)
       std::array const sizes {
           vk::DescriptorPoolSize {
               .type = vk::DescriptorType::eUniformBuffer,
-              .descriptorCount = 1,
+              .descriptorCount = 2,
           },
       };
       return _gpu->getDevice().createDescriptorPoolUnique(vk::DescriptorPoolCreateInfo {
           .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
-          .maxSets = 1,
+          .maxSets = 2,
       }
                                                               .setPoolSizes(sizes));
     }())
@@ -196,6 +196,8 @@ app::App::App(std::filesystem::path path)
     , _pbrPipeline(::createPbrPipeline(*_gpu, _surface.getFormat().format))
     , _cameraUniform(*_gpu, *_allocator, _pbrPipeline.getCameraSetLayout(),
                      _descPool.get(), _controller.getCameraData())
+    , _material(*_gpu, *_allocator, _descPool.get(), _pbrPipeline.getMaterialSetLayout(),
+                {.color {1.0f}})
     , _mesh(::loadMesh(_path, _gpu, _allocator, _commandPool.get()))
     , _submitter(_gpu) {
   setupWindowCallbacks();
@@ -333,9 +335,12 @@ auto app::App::recordCommands(vk::CommandBuffer cmdBuffer,
     { // render the triangle
       cmdBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics,
                              _pbrPipeline.getPipeline());
+      std::array const descSets {
+          _cameraUniform.getDescriptorSet(),
+          _material.getDescriptorSet(),
+      };
       cmdBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
-                                   _pbrPipeline.getPipelineLayout(), 0,
-                                   _cameraUniform.getDescriptorSet(), {});
+                                   _pbrPipeline.getPipelineLayout(), 0, descSets, {});
       pbr::ModelPushConstant const modelPc {
           .model = glm::translate(glm::identity<glm::mat4x4>(), {-5.0, 0.0f, 0.0f}),
       };

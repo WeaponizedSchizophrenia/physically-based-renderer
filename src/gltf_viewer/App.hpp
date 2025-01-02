@@ -9,12 +9,13 @@
 #include "pbr/AsyncSubmitInfo.hpp"
 #include "pbr/AsyncSubmitter.hpp"
 #include "pbr/CameraUniform.hpp"
+#include "pbr/Material.hpp"
 #include "pbr/Mesh.hpp"
 #include "pbr/PbrPipeline.hpp"
 #include "pbr/Surface.hpp"
 #include "pbr/SwapchainImageView.hpp"
-#include "pbr/memory/IAllocator.hpp"
 #include "pbr/imgui/Renderer.hpp"
+#include "pbr/memory/IAllocator.hpp"
 
 #include "CameraController.hpp"
 
@@ -44,7 +45,7 @@ class App {
   pbr::PbrPipeline _pbrPipeline;
 
   pbr::CameraUniform _cameraUniform;
-
+  pbr::Material _material;
   pbr::Mesh _mesh;
 
   // Frame data
