@@ -44,6 +44,7 @@
 #include <spdlog/logger.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 
+#include <glm/ext/vector_float3.hpp>
 #include <glm/ext/matrix_transform.hpp>
 
 namespace constants {
@@ -341,9 +342,8 @@ auto app::App::recordCommands(vk::CommandBuffer cmdBuffer,
       };
       cmdBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
                                    _pbrPipeline.getPipelineLayout(), 0, descSets, {});
-      pbr::ModelPushConstant const modelPc {
-          .model = glm::translate(glm::identity<glm::mat4x4>(), {-5.0, 0.0f, 0.0f}),
-      };
+      auto const modelPc = pbr::makeModelPushConstant(
+          glm::vec3(-2.0f, -1.0f, 0.5f), {glm::vec3(0.1f, 0.0f, 1.2f)}, glm::vec3(1.0f));
       cmdBuffer.pushConstants<pbr::ModelPushConstant>(
           _pbrPipeline.getPipelineLayout(), vk::ShaderStageFlagBits::eVertex, 0, modelPc);
       cmdBuffer.bindVertexBuffers(0, _mesh.getVertexBuffer().getBuffer(), {0});
