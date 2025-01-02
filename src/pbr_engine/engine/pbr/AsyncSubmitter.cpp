@@ -56,6 +56,8 @@ auto pbr::AsyncSubmitter::isExecuting() const -> bool {
 
 auto pbr::AsyncSubmitter::wait() -> AsyncSubmitInfo {
   assert(_submittedInfo.has_value());
+  // Result gets a warning in release builds because the assert is a no-op.
+  [[maybe_unused]]
   auto const result = _gpu->getDevice().waitForFences(
       _fence.get(), vk::False, std::numeric_limits<std::uint64_t>::max());
   assert(result == vk::Result::eSuccess);
