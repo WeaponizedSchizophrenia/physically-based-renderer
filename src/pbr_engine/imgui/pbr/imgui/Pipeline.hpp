@@ -4,9 +4,13 @@
 #include "pbr/core/GpuHandle.hpp"
 
 namespace pbr::imgui {
+/**
+ * Contains the dependencies and options for the imgui pipeline creation.
+ */
 struct PipelineCreateInfo {
   vk::PipelineShaderStageCreateInfo vertexStage{};
   vk::PipelineShaderStageCreateInfo fragmentStage{};
+  /// The format of the pipeline output.
   vk::Format outputFormat{};
 };
 class Pipeline {
@@ -16,6 +20,8 @@ class Pipeline {
 
 public:
   explicit Pipeline(core::GpuHandle const& gpu, PipelineCreateInfo info);
+
+  /* GETTERS */
 
   [[nodiscard]]
   constexpr auto getFontSamplerLayout() const noexcept -> vk::DescriptorSetLayout;

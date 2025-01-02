@@ -15,6 +15,9 @@
 #include <optional>
 
 namespace pbr::imgui {
+/**
+ * Contains all the resources to render imgui.
+ */
 class Renderer {
   struct ImguiBuffer {
     Buffer buffer;
@@ -36,12 +39,30 @@ class Renderer {
   std::optional<ImguiBuffer> _indexBuffer = std::nullopt;
 
 public:
+  /**
+   * Synchronously initializes the renderer.
+   *
+   * @param gpu The gpu to use for the renderer.
+   * @param allocator The allocator to use for the font image and vertex and index
+   * buffers.
+   * @param cmdPool The command pool to use for the command buffer that will stage the
+   * font image copy.
+   * @param info The info for the imgui render pipeline.
+   *
+   * @note This constructor blocks until font image gets copied on the gpu.
+   */
   Renderer(core::SharedGpuHandle gpu, std::shared_ptr<IAllocator> allocator,
            vk::CommandPool cmdPool, PipelineCreateInfo info);
 
+  /**
+   * Records imgui render commands to the provided cmdBuffer.
+   */
   auto render(vk::CommandBuffer cmdBuffer) -> void;
 
 private:
+  /**
+   * Updates the contained vertex and index buffers with the provided data.
+   */
   auto updateBuffers(ImDrawData const* data) -> void;
 };
 } // namespace pbr::imgui
