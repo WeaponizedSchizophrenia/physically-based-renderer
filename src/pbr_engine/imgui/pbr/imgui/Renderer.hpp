@@ -3,10 +3,11 @@
 #include "pbr/Vulkan.hpp"
 
 #include "pbr/core/GpuHandle.hpp"
+
+#include "pbr/Buffer.hpp"
+#include "pbr/Image2D.hpp"
 #include "pbr/imgui/Pipeline.hpp"
 #include "pbr/memory/IAllocator.hpp"
-#include "pbr/Buffer.hpp"
-#include "pbr/Image.hpp"
 
 #include "imgui.h"
 
@@ -23,8 +24,7 @@ class Renderer {
   core::SharedGpuHandle _gpu;
   std::shared_ptr<IAllocator> _allocator;
 
-  pbr::Image _fontImage;
-  vk::UniqueImageView _fontImageView;
+  pbr::Image2D _fontImage;
   vk::UniqueSampler _fontSampler;
 
   Pipeline _pipeline;
@@ -33,11 +33,11 @@ class Renderer {
   vk::DescriptorSet _descSet;
 
   std::optional<ImguiBuffer> _vertexBuffer = std::nullopt;
-  std::optional<ImguiBuffer> _indexBuffer = std::nullopt; 
+  std::optional<ImguiBuffer> _indexBuffer = std::nullopt;
 
 public:
   Renderer(core::SharedGpuHandle gpu, std::shared_ptr<IAllocator> allocator,
-                    vk::CommandPool cmdPool, PipelineCreateInfo info);
+           vk::CommandPool cmdPool, PipelineCreateInfo info);
 
   auto render(vk::CommandBuffer cmdBuffer) -> void;
 

@@ -1,11 +1,11 @@
 #include "pbr/imgui/Renderer.hpp"
 
-#include "pbr/Buffer.hpp"
 #include "pbr/Vulkan.hpp"
 
 #include "pbr/core/GpuHandle.hpp"
 
-#include "pbr/Image.hpp"
+#include "pbr/Buffer.hpp"
+#include "pbr/Image2D.hpp"
 #include "pbr/TransferStager.hpp"
 #include "pbr/imgui/Pipeline.hpp"
 #include "pbr/imgui/PushConstant.hpp"
@@ -27,9 +27,9 @@
 
 namespace {
 [[nodiscard]]
-constexpr auto createFontImage(pbr::core::SharedGpuHandle gpu,
+constexpr auto createFontImage(pbr::core::SharedGpuHandle const& gpu,
                                std::shared_ptr<pbr::IAllocator> allocator,
-                               vk::CommandPool cmdPool) -> pbr::Image {
+                               vk::CommandPool cmdPool) -> pbr::Image2D {
   // TODO: Make this async
   ImGuiIO const& imguiIo = ImGui::GetIO();
   std::uint8_t* fontPixels {};
@@ -39,7 +39,7 @@ constexpr auto createFontImage(pbr::core::SharedGpuHandle gpu,
   std::vector<std::byte> fontImage(static_cast<std::size_t>(width) * height * 4);
   std::memcpy(fontImage.data(), fontPixels, fontImage.size());
 
-  pbr::TransferStager stager(std::move(gpu), std::move(allocator));
+  pbr::TransferStager stager(gpu, std::move(allocator));
   auto imageHandle = stager.addTransfer(
       std::move(fontImage),
       vk::ImageCreateInfo {
@@ -58,7 +58,12 @@ constexpr auto createFontImage(pbr::core::SharedGpuHandle gpu,
       vk::AccessFlagBits2::eShaderRead);
   stager.submit(cmdPool);
   stager.wait();
-  return stager.get(imageHandle);
+  return {
+    *gpu,
+    vk::Format::eR8G8B8A8Unorm,
+    vk::ImageAspectFlagBits::eColor,
+    stager.get(imageHandle),
+  };
 }
 [[nodiscard]]
 constexpr auto
@@ -93,16 +98,6 @@ pbr::imgui::Renderer::Renderer(core::SharedGpuHandle gpu,
     : _gpu(std::move(gpu))
     , _allocator(std::move(allocator))
     , _fontImage(::createFontImage(_gpu, _allocator, cmdPool))
-    , _fontImageView(_gpu->getDevice().createImageViewUnique({
-          .image = _fontImage.getImage(),
-          .viewType = vk::ImageViewType::e2D,
-          .format = vk::Format::eR8G8B8A8Unorm,
-          .subresourceRange {
-              .aspectMask = vk::ImageAspectFlagBits::eColor,
-              .levelCount = 1,
-              .layerCount = 1,
-          },
-      }))
     , _fontSampler(_gpu->getDevice().createSamplerUnique({
           .magFilter = vk::Filter::eLinear,
           .minFilter = vk::Filter::eLinear,
@@ -115,7 +110,7 @@ pbr::imgui::Renderer::Renderer(core::SharedGpuHandle gpu,
     , _descSet(::createDescriptorSet(*_gpu, _pipeline, _descPool.get())) {
   vk::DescriptorImageInfo const imageInfo {
       .sampler = _fontSampler.get(),
-      .imageView = _fontImageView.get(),
+      .imageView = _fontImage.getImageView(),
       .imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal,
   };
   _gpu->getDevice().updateDescriptorSets(
