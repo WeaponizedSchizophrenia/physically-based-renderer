@@ -1,16 +1,16 @@
 #version 460
 
+#include "../Camera.lib.glsl"
+
 layout(location = 0) out vec4 outColor;
 
 layout(location = 0) in vec3 inNormal;
 
-layout(set = 0, binding = 0) uniform CameraData {
-    mat4x4 view;
-    mat4x4 proj;
-    vec3 position;
-} cam;
+layout(set = 0, binding = 0) uniform CameraUBO {
+    Camera cam;
+};
 
-layout(set = 1, binding = 0) uniform Material {
+layout(set = 1, binding = 0) uniform MaterialUBO {
     vec4 color;
 } mat;
 

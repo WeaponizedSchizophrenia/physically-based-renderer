@@ -1,5 +1,7 @@
 #version 460
 
+#include "../Camera.lib.glsl"
+
 layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec3 inNormal;
 
@@ -9,11 +11,9 @@ layout(push_constant) uniform PC {
   mat4x4 model;
 } pc;
 
-layout(set = 0, binding = 0) uniform CameraData {
-  mat4x4 view;
-  mat4x4 proj;
-  vec3 pos;
-} cam;
+layout(set = 0, binding = 0) uniform CameraUBO {
+  Camera cam;
+};
 
 void main() {
     gl_Position = cam.proj * cam.view * pc.model * vec4(inPosition, 1.0);
