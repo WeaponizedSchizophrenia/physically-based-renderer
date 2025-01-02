@@ -7,6 +7,9 @@
 #include <memory>
 
 namespace pbr::core {
+/**
+ * Contains all the necessary objects to communicate with the gpu.
+ */
 class GpuHandle {
   vk::UniqueInstance _instance;
   PhysicalDeviceProperties _physicalDeviceProperties;
@@ -36,6 +39,9 @@ public:
 };
 
 using SharedGpuHandle = std::shared_ptr<GpuHandle const>;
+/**
+ * Creates a SharedGpuHandle.
+ */
 [[nodiscard]]
 constexpr auto makeGpuHandle(GpuHandleCreateInfo const& info) -> SharedGpuHandle;
 } // namespace pbr::core

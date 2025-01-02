@@ -7,12 +7,21 @@
 #include <span>
 
 namespace pbr::core {
+/**
+ * Contains dependencies and settings for a GpuHandle.
+ */
 struct GpuHandleCreateInfo {
   using QueueFamilyPresentPredicate =
       std::function<bool(vk::Instance, vk::PhysicalDevice, std::uint32_t)>;
 
-  std::span<char const* const> extensions;
-  QueueFamilyPresentPredicate presentPredicate;
-  bool enableValidation;
+  /// The required instance extensions.
+  std::span<char const* const> extensions {};
+  /// The predicate that returns whether the passed in physical device has support for
+  /// presentation for the platform.
+  /// @note This predicate is REQUIRED.
+  QueueFamilyPresentPredicate presentPredicate {};
+  /// Value indicating whether validation layers should be enabled for the instance or
+  /// not.
+  bool enableValidation {};
 };
 } // namespace pbr::core

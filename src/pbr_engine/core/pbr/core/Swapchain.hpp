@@ -8,10 +8,12 @@
 #include <cstddef>
 #include <cstdint>
 #include <optional>
-#include <utility>
 #include <vector>
 
 namespace pbr::core {
+/**
+ * Manages a vulkan swapchain.
+ */
 class Swapchain {
   SharedGpuHandle _gpu;
 
@@ -27,14 +29,24 @@ class Swapchain {
 public:
   Swapchain(SharedGpuHandle gpu, vk::SurfaceKHR surface, vk::Extent2D extent);
 
+  /**
+   * Recreates this swapchain with the provided arguments.
+   */
   auto recreate(vk::SurfaceKHR surface, vk::Extent2D extent) -> void;
 
+  /**
+   * Acquires the next image index.
+   * @param semaphore the semaphore that gets passed into vkAcquireNextImageKHR.
+   * @param fence the fence that gets passed into vkAcquireNextImageKHR.
+   * @param timeout optional timeout if no value is provided than the timeout will be
+   * numeric_limits<uint64_t>::max() nanoseconds.
+   *
+   * @returns the return value of vkAcquireNextImageKHR.
+   */
   [[nodiscard]]
   auto acquireImageIndex(vk::Semaphore semaphore, vk::Fence fence = nullptr,
                          std::optional<std::chrono::nanoseconds> timeout = std::nullopt)
       -> vk::ResultValue<std::uint32_t>;
-  [[nodiscard]]
-  auto operator[](std::size_t index) const -> std::pair<vk::Image, vk::ImageView>;
 
   [[nodiscard]]
   constexpr auto getGpuHandle() const noexcept -> SharedGpuHandle const&;
@@ -55,7 +67,14 @@ public:
   constexpr auto getImageView(std::size_t index) const noexcept -> vk::ImageView;
 
 private:
+  /**
+   * Initializes the _views member with data from _images.
+   */
   auto initializeViews() -> void;
+  /**
+   * Creates a vk::SwapchainCreateInfoKHR from the _format, _presentMode, _extent members
+   * and the arguments.
+   */
   [[nodiscard]]
   auto getSwapchainCreateInfo(vk::SurfaceKHR surface,
                               vk::SurfaceCapabilitiesKHR capabilities) const noexcept
@@ -65,7 +84,8 @@ private:
 
 /* IMPLEMENTATIONS */
 
-constexpr auto pbr::core::Swapchain::getGpuHandle() const noexcept -> SharedGpuHandle const& {
+constexpr auto
+pbr::core::Swapchain::getGpuHandle() const noexcept -> SharedGpuHandle const& {
   return _gpu;
 }
 
@@ -80,10 +100,12 @@ constexpr auto pbr::core::Swapchain::getFormat() const noexcept -> vk::SurfaceFo
 constexpr auto pbr::core::Swapchain::getSwapchain() const noexcept -> vk::SwapchainKHR {
   return _swapchain.get();
 }
-constexpr auto pbr::core::Swapchain::getImage(std::size_t index) const noexcept -> vk::Image {
+constexpr auto
+pbr::core::Swapchain::getImage(std::size_t index) const noexcept -> vk::Image {
   return _images.at(index);
 }
 
-constexpr auto pbr::core::Swapchain::getImageView(std::size_t index) const noexcept -> vk::ImageView {
+constexpr auto
+pbr::core::Swapchain::getImageView(std::size_t index) const noexcept -> vk::ImageView {
   return _views.at(index).get();
 }
