@@ -1,6 +1,7 @@
 #pragma once
 
-#include "pbr/MeshBuilder.hpp"
+#include "pbr/Mesh.hpp"
+#include "pbr/TransferStager.hpp"
 
 #include <cstddef>
 
@@ -22,6 +23,6 @@ public:
    * Builds a mesh from the contained gltf asset mesh at index.
    */
   [[nodiscard]]
-  auto buildMesh(std::size_t index) -> MeshBuilder::BuiltMesh;
+  auto loadMesh(TransferStager& stager, std::size_t index) -> Mesh;
 };
 } // namespace pbr::gltf

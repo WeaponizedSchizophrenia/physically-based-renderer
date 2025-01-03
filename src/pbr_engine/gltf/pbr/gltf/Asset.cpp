@@ -1,10 +1,13 @@
 #include "pbr/gltf/Asset.hpp"
 
+#include "pbr/Mesh.hpp"
 #include "pbr/MeshBuilder.hpp"
 #include "pbr/MeshVertex.hpp"
+#include "pbr/TransferStager.hpp"
 
 #include <cassert>
 #include <cstddef>
+#include <cstring>
 #include <format>
 #include <stdexcept>
 #include <string_view>
@@ -71,7 +74,7 @@ pbr::gltf::Asset::Asset(fastgltf::GltfDataBuffer dataBuffer,
                         fastgltf::Asset asset) noexcept
     : _dataBuffer(std::move(dataBuffer)), _asset(std::move(asset)) {}
 
-auto pbr::gltf::Asset::buildMesh(std::size_t index) -> MeshBuilder::BuiltMesh {
+auto pbr::gltf::Asset::loadMesh(TransferStager& stager, std::size_t index) -> Mesh {
   auto const& mesh = _asset.meshes.at(index);
   MeshBuilder meshBuilder;
 
@@ -79,5 +82,15 @@ auto pbr::gltf::Asset::buildMesh(std::size_t index) -> MeshBuilder::BuiltMesh {
     meshBuilder.addPrimitive(::loadPrimitive(_asset, primitive));
   }
 
-  return meshBuilder.build();
+  auto builtMesh = meshBuilder.build();
+  std::vector<std::byte> vertices(builtMesh.vertices.size() * sizeof(MeshVertex));
+  std::memcpy(vertices.data(), builtMesh.vertices.data(), vertices.size());
+  std::vector<std::byte> indices(builtMesh.indices.size() * sizeof(std::uint16_t));
+  std::memcpy(indices.data(), builtMesh.indices.data(), indices.size());
+
+  return {
+      stager.addTransfer(std::move(vertices), vk::BufferUsageFlagBits::eVertexBuffer),
+      stager.addTransfer(std::move(indices), vk::BufferUsageFlagBits::eIndexBuffer),
+      std::move(builtMesh.primitives),
+  };
 }

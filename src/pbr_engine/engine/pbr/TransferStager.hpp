@@ -5,8 +5,6 @@
 #include "pbr/core/GpuHandle.hpp"
 
 #include "pbr/AsyncSubmitter.hpp"
-#include "pbr/Mesh.hpp"
-#include "pbr/MeshBuilder.hpp"
 #include "pbr/Buffer.hpp"
 #include "pbr/Image.hpp"
 #include "pbr/memory/IAllocator.hpp"
@@ -48,8 +46,6 @@ public:
   auto addTransfer(std::vector<std::byte> data, vk::ImageCreateInfo imageInfo,
                    vk::ImageAspectFlags aspectMask, vk::PipelineStageFlags2 dstStage,
                    vk::AccessFlags2 dstAccess) -> Image;
-  [[nodiscard]]
-  auto addTransfer(MeshBuilder::BuiltMesh builtMesh) -> Mesh;
 
   auto submit(vk::CommandPool cmdPool) -> void;
   auto wait() -> void;

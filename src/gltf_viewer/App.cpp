@@ -126,7 +126,7 @@ constexpr auto loadMesh(std::filesystem::path const& path, pbr::core::SharedGpuH
   pbr::gltf::Loader loader;
   auto asset = loader.loadAsset(path);
   pbr::TransferStager stager(std::move(gpu), std::move(allocator));
-  auto mesh= stager.addTransfer(asset.buildMesh(0));
+  auto mesh = asset.loadMesh(stager, 0);
   stager.submit(cmdPool);
   stager.wait();
   return mesh;

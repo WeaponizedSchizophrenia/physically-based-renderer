@@ -1,12 +1,9 @@
 #include "pbr/TransferStager.hpp"
 
-#include "pbr/Mesh.hpp"
 #include "pbr/Vulkan.hpp"
 
 #include "pbr/Buffer.hpp"
 #include "pbr/Image.hpp"
-#include "pbr/MeshBuilder.hpp"
-#include "pbr/MeshVertex.hpp"
 #include "pbr/core/GpuHandle.hpp"
 #include "pbr/memory/AllocationInfo.hpp"
 #include "pbr/memory/IAllocator.hpp"
@@ -49,20 +46,6 @@ auto pbr::TransferStager::addTransfer(std::vector<std::byte> data,
                                imageInfo.extent, dstStage, dstAccess);
 
   return image;
-}
-
-auto pbr::TransferStager::addTransfer(MeshBuilder::BuiltMesh builtMesh) -> Mesh {
-  std::vector<std::byte> vertices(builtMesh.vertices.size() * sizeof(MeshVertex));
-  std::memcpy(vertices.data(), builtMesh.vertices.data(), vertices.size());
-
-  std::vector<std::byte> indices(builtMesh.indices.size() * sizeof(std::uint16_t));
-  std::memcpy(indices.data(), builtMesh.indices.data(), indices.size());
-
-  return {
-      addTransfer(std::move(vertices), vk::BufferUsageFlagBits::eVertexBuffer),
-      addTransfer(std::move(indices), vk::BufferUsageFlagBits::eIndexBuffer),
-      std::move(builtMesh.primitives),
-  };
 }
 
 auto pbr::TransferStager::submit(vk::CommandPool const cmdPool) -> void {
