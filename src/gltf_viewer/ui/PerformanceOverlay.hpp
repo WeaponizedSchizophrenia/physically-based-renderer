@@ -7,13 +7,12 @@
 namespace app::ui {
 class PerformanceOverlay {
 public:
-  static constexpr auto DEFAULT_PADDING = 10.0f;
-  static constexpr auto DEFAULT_ALPHA = 0.25f;
+  static constexpr auto PADDING = 10.0f;
+  static constexpr auto ALPHA = 0.25f;
+  static constexpr auto MIN_WIDTH = 200.0f;
   static constexpr auto DEFAULT_OPEN = true;
 
 private:
-  float _padding = DEFAULT_PADDING;
-  float _alpha = DEFAULT_ALPHA;
   bool _open = DEFAULT_OPEN;
 
 public:
@@ -23,8 +22,8 @@ public:
 
 private:
   [[nodiscard]]
-  auto calculateOverlayPosition() const -> ImVec2;
+  static auto calculateOverlayPosition() -> ImVec2;
   [[nodiscard]]
-  auto createWindowFlags() const noexcept -> ImGuiWindowFlags;
+  static auto createWindowFlags() noexcept -> ImGuiWindowFlags;
 };
 } // namespace app::ui

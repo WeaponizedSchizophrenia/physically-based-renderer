@@ -6,11 +6,15 @@
 
 namespace app {
 class AppUi {
-  ui::PerformanceOverlay _performanceOverlay;
+public:
+  static constexpr auto ROUNDING = 4.0f;
+
+private:
+  ui::PerformanceOverlay _performanceOverlay {};
 
 public:
-  AppUi() = default;
+  AppUi();
 
   auto render(std::chrono::nanoseconds deltaTime) -> void;
 };
-}
+} // namespace app
