@@ -35,9 +35,9 @@
 #include <filesystem>
 #include <format>
 #include <fstream>
-#include <glm/ext/quaternion_transform.hpp>
 #include <ios>
 #include <memory>
+#include <ratio>
 #include <stdexcept>
 #include <string_view>
 #include <utility>
@@ -47,6 +47,7 @@
 #include <spdlog/sinks/stdout_color_sinks.h>
 
 #include <glm/ext/matrix_transform.hpp>
+#include <glm/ext/quaternion_transform.hpp>
 #include <glm/ext/vector_float3.hpp>
 
 namespace constants {
@@ -235,7 +236,30 @@ auto app::App::run() -> void {
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
     ImGui::ShowDemoWindow();
-    ImGui::Render();
+
+    { // stat window
+      constexpr auto PADDING = 10.0f;
+      constexpr auto ALPHA = 0.25f;
+      auto const* const viewport = ImGui::GetMainViewport();
+      ImVec2 windowPos = viewport->WorkPos;
+      windowPos.x += PADDING;
+      windowPos.y += PADDING;
+      ImGui::SetNextWindowPos(windowPos, ImGuiCond_Always);
+      ImGui::SetNextWindowBgAlpha(ALPHA);
+      if (ImGui::Begin("Performance overlay", nullptr,
+                       ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize
+                           | ImGuiWindowFlags_NoSavedSettings
+                           | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav
+                           | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize
+                           | ImGuiWindowFlags_NoScrollbar
+                           | ImGuiWindowFlags_NoScrollWithMouse)) {
+        ImGui::Text("Frame time %.3f ms",
+                    std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(
+                        frameDuration)
+                        .count());
+        ImGui::End();
+      }
+    }
 
     _controller.update(deltaTime);
     _scene.camera->set(_controller.getCameraData());
@@ -243,6 +267,7 @@ auto app::App::run() -> void {
         glm::rotate(_scene.meshes.front().transform.rotation,
                     static_cast<float>(deltaTime), {0.0f, 1.0f, 0.0f});
 
+    ImGui::Render();
     renderAndPresent();
   }
 }
@@ -352,30 +377,6 @@ auto app::App::recordCommands(vk::CommandBuffer cmdBuffer,
                                });
     }
     pbr::renderScene(cmdBuffer, _pbrPipeline, _scene);
-    { // render the triangle
-      // cmdBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics,
-      //                        _pbrPipeline.getPipeline());
-      // std::array const descSets {
-      //     _cameraUniform.getDescriptorSet(),
-      //     _material.getDescriptorSet(),
-      // };
-      // cmdBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
-      //                              _pbrPipeline.getPipelineLayout(), 0, descSets, {});
-      // auto const modelPc = pbr::makeModelPushConstant(
-      //     glm::vec3(-2.0f, -1.0f, 0.5f), {glm::vec3(0.1f, 0.0f, 1.2f)},
-      //     glm::vec3(1.0f));
-      // cmdBuffer.pushConstants<pbr::ModelPushConstant>(
-      //     _pbrPipeline.getPipelineLayout(), vk::ShaderStageFlagBits::eVertex, 0,
-      //     modelPc);
-      // cmdBuffer.bindVertexBuffers(0, _mesh.getVertexBuffer().getBuffer(), {0});
-      // cmdBuffer.bindIndexBuffer(_mesh.getIndexBuffer().getBuffer(), 0,
-      //                           vk::IndexType::eUint16);
-      //
-      // for (auto primitive : _mesh.getPrimitives()) {
-      //   cmdBuffer.drawIndexed(primitive.indexCount, 1, primitive.firstIndex,
-      //                         static_cast<std::int32_t>(primitive.firstVertex), 0);
-      // }
-    }
     cmdBuffer.endRendering();
   }
   { // render imgui to imageView
