@@ -1,5 +1,7 @@
 #include "App.hpp"
 
+#include "pbr/CameraUniform.hpp"
+#include "pbr/Material.hpp"
 #include "pbr/Vulkan.hpp"
 
 #include "vkfw/vkfw.hpp"
@@ -9,10 +11,9 @@
 #include "pbr/core/GpuHandle.hpp"
 
 #include "pbr/AsyncSubmitInfo.hpp"
-#include "pbr/Buffer.hpp"
 #include "pbr/Mesh.hpp"
-#include "pbr/ModelPushConstant.hpp"
 #include "pbr/PbrPipeline.hpp"
+#include "pbr/Scene.hpp"
 #include "pbr/SwapchainImageView.hpp"
 #include "pbr/TransferStager.hpp"
 #include "pbr/gltf/Loader.hpp"
@@ -34,6 +35,7 @@
 #include <filesystem>
 #include <format>
 #include <fstream>
+#include <glm/ext/quaternion_transform.hpp>
 #include <ios>
 #include <memory>
 #include <stdexcept>
@@ -44,8 +46,8 @@
 #include <spdlog/logger.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 
-#include <glm/ext/vector_float3.hpp>
 #include <glm/ext/matrix_transform.hpp>
+#include <glm/ext/vector_float3.hpp>
 
 namespace constants {
 constexpr static auto DEFAULT_WINDOW_WIDTH = 1280uz;
@@ -195,11 +197,24 @@ app::App::App(std::filesystem::path path)
                                            _commandPool.get(),
                                            _surface.getFormat().format))
     , _pbrPipeline(::createPbrPipeline(*_gpu, _surface.getFormat().format))
-    , _cameraUniform(*_gpu, *_allocator, _pbrPipeline.getCameraSetLayout(),
-                     _descPool.get(), _controller.getCameraData())
-    , _material(*_gpu, *_allocator, _descPool.get(), _pbrPipeline.getMaterialSetLayout(),
-                {.color {1.0f}})
-    , _mesh(::loadMesh(_path, _gpu, _allocator, _commandPool.get()))
+    // , _cameraUniform(*_gpu, *_allocator, _pbrPipeline.getCameraSetLayout(),
+    //                  _descPool.get(), _controller.getCameraData())
+    // , _material(*_gpu, *_allocator, _descPool.get(),
+    // _pbrPipeline.getMaterialSetLayout(),
+    //             {.color {1.0f}})
+    // , _mesh(::loadMesh(_path, _gpu, _allocator, _commandPool.get()))
+    , _scene(pbr::Scene {
+          .meshes {pbr::MeshInstance {
+              .mesh = std::make_shared<pbr::Mesh>(
+                  ::loadMesh(_path, _gpu, _allocator, _commandPool.get())),
+              .material = std::make_shared<pbr::Material>(
+                  *_gpu, *_allocator, _descPool.get(),
+                  _pbrPipeline.getMaterialSetLayout(), pbr::MaterialData {.color {1.0f}}),
+          }},
+          .camera = std::make_shared<pbr::CameraUniform>(
+              *_gpu, *_allocator, _pbrPipeline.getCameraSetLayout(), _descPool.get(),
+              _controller.getCameraData()),
+      })
     , _submitter(_gpu) {
   setupWindowCallbacks();
 
@@ -223,7 +238,10 @@ auto app::App::run() -> void {
     ImGui::Render();
 
     _controller.update(deltaTime);
-    _cameraUniform.set(_controller.getCameraData());
+    _scene.camera->set(_controller.getCameraData());
+    _scene.meshes.front().transform.rotation =
+        glm::rotate(_scene.meshes.front().transform.rotation,
+                    static_cast<float>(deltaTime), {0.0f, 1.0f, 0.0f});
 
     renderAndPresent();
   }
@@ -333,27 +351,30 @@ auto app::App::recordCommands(vk::CommandBuffer cmdBuffer,
                                    .maxDepth = 1.0f,
                                });
     }
+    pbr::renderScene(cmdBuffer, _pbrPipeline, _scene);
     { // render the triangle
-      cmdBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics,
-                             _pbrPipeline.getPipeline());
-      std::array const descSets {
-          _cameraUniform.getDescriptorSet(),
-          _material.getDescriptorSet(),
-      };
-      cmdBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
-                                   _pbrPipeline.getPipelineLayout(), 0, descSets, {});
-      auto const modelPc = pbr::makeModelPushConstant(
-          glm::vec3(-2.0f, -1.0f, 0.5f), {glm::vec3(0.1f, 0.0f, 1.2f)}, glm::vec3(1.0f));
-      cmdBuffer.pushConstants<pbr::ModelPushConstant>(
-          _pbrPipeline.getPipelineLayout(), vk::ShaderStageFlagBits::eVertex, 0, modelPc);
-      cmdBuffer.bindVertexBuffers(0, _mesh.getVertexBuffer().getBuffer(), {0});
-      cmdBuffer.bindIndexBuffer(_mesh.getIndexBuffer().getBuffer(), 0,
-                                vk::IndexType::eUint16);
-
-      for (auto primitive : _mesh.getPrimitives()) {
-        cmdBuffer.drawIndexed(primitive.indexCount, 1, primitive.firstIndex,
-                              static_cast<std::int32_t>(primitive.firstVertex), 0);
-      }
+      // cmdBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics,
+      //                        _pbrPipeline.getPipeline());
+      // std::array const descSets {
+      //     _cameraUniform.getDescriptorSet(),
+      //     _material.getDescriptorSet(),
+      // };
+      // cmdBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
+      //                              _pbrPipeline.getPipelineLayout(), 0, descSets, {});
+      // auto const modelPc = pbr::makeModelPushConstant(
+      //     glm::vec3(-2.0f, -1.0f, 0.5f), {glm::vec3(0.1f, 0.0f, 1.2f)},
+      //     glm::vec3(1.0f));
+      // cmdBuffer.pushConstants<pbr::ModelPushConstant>(
+      //     _pbrPipeline.getPipelineLayout(), vk::ShaderStageFlagBits::eVertex, 0,
+      //     modelPc);
+      // cmdBuffer.bindVertexBuffers(0, _mesh.getVertexBuffer().getBuffer(), {0});
+      // cmdBuffer.bindIndexBuffer(_mesh.getIndexBuffer().getBuffer(), 0,
+      //                           vk::IndexType::eUint16);
+      //
+      // for (auto primitive : _mesh.getPrimitives()) {
+      //   cmdBuffer.drawIndexed(primitive.indexCount, 1, primitive.firstIndex,
+      //                         static_cast<std::int32_t>(primitive.firstVertex), 0);
+      // }
     }
     cmdBuffer.endRendering();
   }

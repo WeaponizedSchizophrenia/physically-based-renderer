@@ -1,5 +1,6 @@
 #pragma once
 
+#include "pbr/Scene.hpp"
 #include "pbr/Vulkan.hpp"
 
 #include "vkfw/vkfw.hpp"
@@ -8,9 +9,6 @@
 
 #include "pbr/AsyncSubmitInfo.hpp"
 #include "pbr/AsyncSubmitter.hpp"
-#include "pbr/CameraUniform.hpp"
-#include "pbr/Material.hpp"
-#include "pbr/Mesh.hpp"
 #include "pbr/PbrPipeline.hpp"
 #include "pbr/Surface.hpp"
 #include "pbr/SwapchainImageView.hpp"
@@ -44,9 +42,7 @@ class App {
 
   pbr::PbrPipeline _pbrPipeline;
 
-  pbr::CameraUniform _cameraUniform;
-  pbr::Material _material;
-  pbr::Mesh _mesh;
+  pbr::Scene _scene;
 
   // Frame data
   pbr::AsyncSubmitter _submitter;
