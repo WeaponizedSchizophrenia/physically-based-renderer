@@ -214,9 +214,9 @@ TEST_CASE("Engine tests", "[pbr]") {
 
     pbr::TransferStager stager(gpu, allocator);
 
-    auto const bufferHandle =
+    auto const buffer=
         stager.addTransfer(bufferData, vk::BufferUsageFlagBits::eStorageBuffer);
-    auto const imageHandle = stager.addTransfer(
+    auto const image= stager.addTransfer(
         imageData,
         {
             .imageType = vk::ImageType::e2D,
@@ -235,8 +235,5 @@ TEST_CASE("Engine tests", "[pbr]") {
 
     stager.submit(commandPool.get());
     stager.wait();
-
-    auto const buffer = stager.get(bufferHandle);
-    auto const image = stager.get(imageHandle);
   }
 }

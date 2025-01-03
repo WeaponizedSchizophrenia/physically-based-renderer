@@ -126,10 +126,10 @@ constexpr auto loadMesh(std::filesystem::path const& path, pbr::core::SharedGpuH
   pbr::gltf::Loader loader;
   auto asset = loader.loadAsset(path);
   pbr::TransferStager stager(std::move(gpu), std::move(allocator));
-  auto const meshHandle = stager.addTransfer(asset.buildMesh(0));
+  auto mesh= stager.addTransfer(asset.buildMesh(0));
   stager.submit(cmdPool);
   stager.wait();
-  return stager.get(meshHandle);
+  return mesh;
 }
 [[nodiscard]]
 constexpr auto createImguiRenderer(pbr::core::SharedGpuHandle gpu,

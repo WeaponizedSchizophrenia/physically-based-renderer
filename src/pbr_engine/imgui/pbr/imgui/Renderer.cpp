@@ -40,29 +40,29 @@ constexpr auto createFontImage(pbr::core::SharedGpuHandle const& gpu,
   std::memcpy(fontImage.data(), fontPixels, fontImage.size());
 
   pbr::TransferStager stager(gpu, std::move(allocator));
-  auto imageHandle = stager.addTransfer(
-      std::move(fontImage),
-      vk::ImageCreateInfo {
-          .imageType = vk::ImageType::e2D,
-          .format = vk::Format::eR8G8B8A8Unorm,
-          .extent {
-              .width = static_cast<std::uint32_t>(width),
-              .height = static_cast<std::uint32_t>(height),
-              .depth = 1,
-          },
-          .mipLevels = 1,
-          .arrayLayers = 1,
-          .usage = vk::ImageUsageFlagBits::eSampled,
-      },
-      vk::ImageAspectFlagBits::eColor, vk::PipelineStageFlagBits2::eFragmentShader,
-      vk::AccessFlagBits2::eShaderRead);
+  auto image = stager.addTransfer(std::move(fontImage),
+                                  vk::ImageCreateInfo {
+                                      .imageType = vk::ImageType::e2D,
+                                      .format = vk::Format::eR8G8B8A8Unorm,
+                                      .extent {
+                                          .width = static_cast<std::uint32_t>(width),
+                                          .height = static_cast<std::uint32_t>(height),
+                                          .depth = 1,
+                                      },
+                                      .mipLevels = 1,
+                                      .arrayLayers = 1,
+                                      .usage = vk::ImageUsageFlagBits::eSampled,
+                                  },
+                                  vk::ImageAspectFlagBits::eColor,
+                                  vk::PipelineStageFlagBits2::eFragmentShader,
+                                  vk::AccessFlagBits2::eShaderRead);
   stager.submit(cmdPool);
   stager.wait();
   return {
-    *gpu,
-    vk::Format::eR8G8B8A8Unorm,
-    vk::ImageAspectFlagBits::eColor,
-    stager.get(imageHandle),
+      *gpu,
+      vk::Format::eR8G8B8A8Unorm,
+      vk::ImageAspectFlagBits::eColor,
+      std::move(image),
   };
 }
 [[nodiscard]]
