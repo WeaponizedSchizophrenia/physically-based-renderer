@@ -1,5 +1,6 @@
 #pragma once
 
+#include "AppUi.hpp"
 #include "pbr/Scene.hpp"
 #include "pbr/Vulkan.hpp"
 
@@ -39,6 +40,7 @@ class App {
   vk::UniqueDescriptorPool _descPool;
 
   pbr::imgui::Renderer _imguiRenderer;
+  AppUi _ui;
 
   pbr::PbrPipeline _pbrPipeline;
 

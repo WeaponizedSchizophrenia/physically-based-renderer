@@ -37,7 +37,6 @@
 #include <fstream>
 #include <ios>
 #include <memory>
-#include <ratio>
 #include <stdexcept>
 #include <string_view>
 #include <utility>
@@ -237,29 +236,7 @@ auto app::App::run() -> void {
     ImGui::NewFrame();
     ImGui::ShowDemoWindow();
 
-    { // stat window
-      constexpr auto PADDING = 10.0f;
-      constexpr auto ALPHA = 0.25f;
-      auto const* const viewport = ImGui::GetMainViewport();
-      ImVec2 windowPos = viewport->WorkPos;
-      windowPos.x += PADDING;
-      windowPos.y += PADDING;
-      ImGui::SetNextWindowPos(windowPos, ImGuiCond_Always);
-      ImGui::SetNextWindowBgAlpha(ALPHA);
-      if (ImGui::Begin("Performance overlay", nullptr,
-                       ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize
-                           | ImGuiWindowFlags_NoSavedSettings
-                           | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav
-                           | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize
-                           | ImGuiWindowFlags_NoScrollbar
-                           | ImGuiWindowFlags_NoScrollWithMouse)) {
-        ImGui::Text("Frame time %.3f ms",
-                    std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(
-                        frameDuration)
-                        .count());
-        ImGui::End();
-      }
-    }
+    _ui.render(frameDuration);
 
     _controller.update(deltaTime);
     _scene.camera->set(_controller.getCameraData());
