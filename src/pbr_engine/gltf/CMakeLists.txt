@@ -11,6 +11,7 @@ target_link_libraries(pbr_engine_gltf PUBLIC
   pbr_engine_vulkan_include
   pbr_engine_core
   pbr_engine
+  pbr_engine_image
 )
 
 target_include_directories(pbr_engine_gltf PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})

@@ -4,7 +4,6 @@
 
 #include "pbr/PbrPipeline.hpp"
 #include "pbr/CameraUniform.hpp"
-#include "pbr/Material.hpp"
 #include "pbr/Mesh.hpp"
 
 #include <memory>
@@ -22,7 +21,6 @@ struct Transform {
 };
 struct MeshInstance {
   std::shared_ptr<Mesh> mesh {};
-  std::shared_ptr<Material> material {};
   Transform transform {};
 };
 struct Scene {

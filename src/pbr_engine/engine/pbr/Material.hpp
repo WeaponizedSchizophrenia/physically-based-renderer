@@ -4,10 +4,11 @@
 
 #include "pbr/core/GpuHandle.hpp"
 
+#include "pbr/Image2D.hpp"
 #include "pbr/Uniform.hpp"
-#include "pbr/memory/IAllocator.hpp"
 
 #include <glm/ext/vector_float4.hpp>
+#include <memory>
 
 namespace pbr {
 struct MaterialData {
@@ -16,16 +17,22 @@ struct MaterialData {
 
 class Material {
   Uniform<MaterialData> _materialData;
+  std::shared_ptr<Image2D> _colorTexture;
+  std::shared_ptr<vk::UniqueSampler> _colorSampler;
   vk::UniqueDescriptorSet _descriptorSet;
 
 public:
-  Material(core::GpuHandle const& gpu, IAllocator& allocator, vk::DescriptorPool descPool,
-           vk::DescriptorSetLayout setLayout, MaterialData materialData);
+  Material(core::GpuHandle const& gpu, Uniform<MaterialData> matData,
+           std::shared_ptr<Image2D> colorTexture,
+           std::shared_ptr<vk::UniqueSampler> sampler, vk::UniqueDescriptorSet descSet);
 
   /* GETTERS */
 
   [[nodiscard]]
   constexpr auto getDescriptorSet() const noexcept -> vk::DescriptorSet;
+
+private:
+  auto writeDescriptorSet(core::GpuHandle const& gpu) -> void;
 };
 } // namespace pbr
 

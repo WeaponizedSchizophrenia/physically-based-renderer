@@ -1,8 +1,10 @@
 #pragma once
 
 #include "pbr/Buffer.hpp"
+#include "pbr/Material.hpp"
 
 #include <cstdint>
+#include <memory>
 #include <span>
 #include <vector>
 
@@ -11,6 +13,7 @@ namespace pbr {
   * Describes a primitive inside a vertex and index buffers.
 */
 struct PrimitiveSpan {
+  std::shared_ptr<Material> material;
   std::uint32_t firstVertex;
   std::uint32_t vertexCount;
   std::uint32_t firstIndex;

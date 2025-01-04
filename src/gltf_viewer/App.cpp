@@ -1,9 +1,5 @@
 #include "App.hpp"
 
-#include "pbr/CameraUniform.hpp"
-#include "pbr/Material.hpp"
-#include "pbr/Vulkan.hpp"
-
 #include "vkfw/vkfw.hpp"
 
 #include "pbr/utils/Conversions.hpp"
@@ -11,11 +7,12 @@
 #include "pbr/core/GpuHandle.hpp"
 
 #include "pbr/AsyncSubmitInfo.hpp"
-#include "pbr/Mesh.hpp"
 #include "pbr/PbrPipeline.hpp"
 #include "pbr/Scene.hpp"
 #include "pbr/SwapchainImageView.hpp"
+#include "pbr/gltf/Asset.hpp"
 #include "pbr/TransferStager.hpp"
+#include "pbr/Vulkan.hpp"
 #include "pbr/gltf/Loader.hpp"
 #include "pbr/imgui/Pipeline.hpp"
 #include "pbr/imgui/Renderer.hpp"
@@ -120,16 +117,20 @@ constexpr auto createPbrPipeline(pbr::core::GpuHandle const& gpu,
   };
 }
 [[nodiscard]]
-constexpr auto loadMesh(std::filesystem::path const& path, pbr::core::SharedGpuHandle gpu,
-                        std::shared_ptr<pbr::IAllocator> allocator,
-                        vk::CommandPool cmdPool) -> pbr::Mesh {
+constexpr auto loadScene(std::filesystem::path const& path,
+                         pbr::gltf::AssetDependencies dependencies,
+                         vk::CommandPool cmdPool) -> pbr::Scene {
+  pbr::TransferStager stager(dependencies.gpu, dependencies.allocator);
+
   pbr::gltf::Loader loader;
-  auto asset = loader.loadAsset(path);
-  pbr::TransferStager stager(std::move(gpu), std::move(allocator));
-  auto mesh = asset.loadMesh(stager, 0);
+  auto asset = loader.loadAsset(path, std::move(dependencies));
+
+  auto scene = asset.loadScene(stager, 0);
+
   stager.submit(cmdPool);
   stager.wait();
-  return mesh;
+
+  return scene;
 }
 [[nodiscard]]
 constexpr auto createImguiRenderer(pbr::core::SharedGpuHandle gpu,
@@ -184,12 +185,16 @@ app::App::App(std::filesystem::path path)
       std::array const sizes {
           vk::DescriptorPoolSize {
               .type = vk::DescriptorType::eUniformBuffer,
-              .descriptorCount = 2,
+              .descriptorCount = 6,
+          },
+          vk::DescriptorPoolSize {
+              .type = vk::DescriptorType::eSampledImage,
+              .descriptorCount = 5,
           },
       };
       return _gpu->getDevice().createDescriptorPoolUnique(vk::DescriptorPoolCreateInfo {
           .flags = vk::DescriptorPoolCreateFlagBits::eFreeDescriptorSet,
-          .maxSets = 2,
+          .maxSets = 6,
       }
                                                               .setPoolSizes(sizes));
     }())
@@ -197,24 +202,16 @@ app::App::App(std::filesystem::path path)
                                            _commandPool.get(),
                                            _surface.getFormat().format))
     , _pbrPipeline(::createPbrPipeline(*_gpu, _surface.getFormat().format))
-    // , _cameraUniform(*_gpu, *_allocator, _pbrPipeline.getCameraSetLayout(),
-    //                  _descPool.get(), _controller.getCameraData())
-    // , _material(*_gpu, *_allocator, _descPool.get(),
-    // _pbrPipeline.getMaterialSetLayout(),
-    //             {.color {1.0f}})
-    // , _mesh(::loadMesh(_path, _gpu, _allocator, _commandPool.get()))
-    , _scene(pbr::Scene {
-          .meshes {pbr::MeshInstance {
-              .mesh = std::make_shared<pbr::Mesh>(
-                  ::loadMesh(_path, _gpu, _allocator, _commandPool.get())),
-              .material = std::make_shared<pbr::Material>(
-                  *_gpu, *_allocator, _descPool.get(),
-                  _pbrPipeline.getMaterialSetLayout(), pbr::MaterialData {.color {1.0f}}),
-          }},
-          .camera = std::make_shared<pbr::CameraUniform>(
-              *_gpu, *_allocator, _pbrPipeline.getCameraSetLayout(), _descPool.get(),
-              _controller.getCameraData()),
-      })
+    , _scene(::loadScene(
+          _path,
+          {
+              .gpu = _gpu,
+              .allocator = _allocator,
+              .cameraAllocator {_gpu, _descPool.get(), _pbrPipeline.getCameraSetLayout()},
+              .materialAllocator {_gpu, _descPool.get(),
+                                  _pbrPipeline.getMaterialSetLayout()},
+          },
+          _commandPool.get()))
     , _submitter(_gpu) {
   setupWindowCallbacks();
 

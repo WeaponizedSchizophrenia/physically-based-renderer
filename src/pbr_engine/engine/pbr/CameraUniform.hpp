@@ -15,17 +15,8 @@ class CameraUniform : public Uniform<CameraData> {
 
 public:
   CameraUniform(core::GpuHandle const& gpu, IAllocator& allocator,
-                vk::DescriptorSetLayout layout, vk::DescriptorPool pool,
-                CameraData init = {})
-      : Uniform(allocator, init)
-      , _descriptorSet(
-            std::move(gpu.getDevice()
-                          .allocateDescriptorSetsUnique(vk::DescriptorSetAllocateInfo {
-                              .descriptorPool = pool,
-                              .descriptorSetCount = 1,
-                          }
-                                                            .setSetLayouts(layout))
-                          .front())) {
+                vk::UniqueDescriptorSet descSet, CameraData init = {})
+      : Uniform(allocator, init), _descriptorSet(std::move(descSet)) {
     vk::DescriptorBufferInfo const bufferInfo {
         .buffer = getUniformBuffer().getBuffer(),
         .range = sizeof(CameraData),
@@ -46,6 +37,7 @@ public:
 
 /* IMPLEMENTATIONS */
 
-constexpr auto pbr::CameraUniform::getDescriptorSet() const noexcept -> vk::DescriptorSet {
+constexpr auto
+pbr::CameraUniform::getDescriptorSet() const noexcept -> vk::DescriptorSet {
   return _descriptorSet.get();
 }

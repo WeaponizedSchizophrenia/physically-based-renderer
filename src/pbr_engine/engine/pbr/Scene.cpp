@@ -14,9 +14,6 @@ auto pbr::renderScene(vk::CommandBuffer cmdBuffer, PbrPipeline const& pbrPipelin
                                pbrPipeline.getPipelineLayout(), 0,
                                scene.camera->getDescriptorSet(), {});
   for (auto const& mesh : scene.meshes) {
-    cmdBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
-                                 pbrPipeline.getPipelineLayout(), 1,
-                                 mesh.material->getDescriptorSet(), {});
     auto const pushConst = pbr::makeModelPushConstant(
         mesh.transform.position, mesh.transform.rotation, mesh.transform.scale);
     cmdBuffer.pushConstants<ModelPushConstant>(
@@ -25,7 +22,10 @@ auto pbr::renderScene(vk::CommandBuffer cmdBuffer, PbrPipeline const& pbrPipelin
     cmdBuffer.bindVertexBuffers(0, mesh.mesh->getVertexBuffer().getBuffer(), {0});
     cmdBuffer.bindIndexBuffer(mesh.mesh->getIndexBuffer().getBuffer(), 0,
                               vk::IndexType::eUint16);
-    for (auto const primitive : mesh.mesh->getPrimitives()) {
+    for (auto const& primitive : mesh.mesh->getPrimitives()) {
+      cmdBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
+                                   pbrPipeline.getPipelineLayout(), 1,
+                                   primitive.material->getDescriptorSet(), {});
       cmdBuffer.drawIndexed(primitive.indexCount, 1, primitive.firstIndex,
                             static_cast<std::int32_t>(primitive.firstVertex), 0);
     }

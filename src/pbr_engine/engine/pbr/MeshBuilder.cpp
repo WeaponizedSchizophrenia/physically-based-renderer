@@ -36,6 +36,7 @@ auto pbr::MeshBuilder::build() const -> BuiltMesh {
     auto const indexCount = static_cast<std::uint32_t>(primitive.indices.size());
 
     primitives.push_back({
+        .material = primitive.material,
         .firstVertex = currentVertex,
         .vertexCount = vertexCount,
         .firstIndex = currentIndex,

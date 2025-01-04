@@ -14,12 +14,10 @@ class Loader {
   fastgltf::Parser _parser;
 
 public:
-  Loader() = default;
-
   /**
    * Loads the gltf asset from the specified path.
    */
   [[nodiscard]]
-  auto loadAsset(std::filesystem::path const& path) -> Asset;
+  auto loadAsset(std::filesystem::path const& path, AssetDependencies dependencies) -> Asset;
 };
 } // namespace pbr::gltf

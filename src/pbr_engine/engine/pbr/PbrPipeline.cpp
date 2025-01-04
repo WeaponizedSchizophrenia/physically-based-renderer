@@ -37,6 +37,12 @@ constexpr auto createMaterialSetLayout(pbr::core::GpuHandle const& gpu)
           .descriptorCount = 1,
           .stageFlags = vk::ShaderStageFlagBits::eFragment,
       },
+      vk::DescriptorSetLayoutBinding {
+          .binding = 1,
+          .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+          .descriptorCount = 1,
+          .stageFlags = vk::ShaderStageFlagBits::eFragment,
+      },
   };
   return gpu.getDevice().createDescriptorSetLayoutUnique(
       vk::DescriptorSetLayoutCreateInfo {}.setBindings(bindings));
@@ -67,10 +73,11 @@ constexpr auto createPipeline(pbr::core::GpuHandle const& gpu, vk::PipelineLayou
   vk::VertexInputBindingDescription const meshVertexBinding {
       .stride = sizeof(pbr::MeshVertex),
   };
+  auto const attributes = pbr::getMeshVertexAttributes();
   auto const vertexInput =
       vk::PipelineVertexInputStateCreateInfo {}
           .setVertexBindingDescriptions(meshVertexBinding)
-          .setVertexAttributeDescriptions(pbr::MeshVertex::attributes);
+          .setVertexAttributeDescriptions(attributes);
   vk::PipelineInputAssemblyStateCreateInfo const inputAssembly {
       .topology = vk::PrimitiveTopology::eTriangleList,
   };
