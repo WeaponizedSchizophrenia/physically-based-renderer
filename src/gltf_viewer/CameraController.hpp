@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <glm/ext/matrix_transform.hpp>
 #include <utility>
 
 #include <glm/common.hpp>
@@ -103,14 +104,15 @@ constexpr auto app::CameraController::onCursorMove(double const newX,
   _lastMousePos = newMousePos;
 
   if (_window.getMouseButton(vkfw::MouseButton::eRight)) {
-    _yaw += mouseDelta.x * _sensitivity;
-    _pitch += mouseDelta.y * _sensitivity;
+    _yaw -= mouseDelta.x * _sensitivity;
+    _pitch -= mouseDelta.y * _sensitivity;
     _pitch = std::clamp(_pitch, MIN_PITCH, MAX_PITCH);
   }
 }
 constexpr auto app::CameraController::onScroll(double /*xOffset*/,
                                                double yOffset) -> void {
-  _fov = std::clamp(_fov - (static_cast<float>(yOffset) * FOV_INCREMENT), MIN_FOV, MAX_FOV);
+  _fov =
+      std::clamp(_fov - (static_cast<float>(yOffset) * FOV_INCREMENT), MIN_FOV, MAX_FOV);
 }
 constexpr auto app::CameraController::update(double deltaTime) -> void {
   auto const inputVector = getInputVector();
@@ -145,6 +147,11 @@ constexpr auto app::CameraController::getInputVector() const noexcept -> glm::ve
   } else if (_window.getKey(vkfw::Key::eD)) {
     vec.x = 1.0f;
   }
+  if (_window.getKey(vkfw::Key::eE)) {
+    vec.y = 1.0f;
+  } else if (_window.getKey(vkfw::Key::eQ)) {
+    vec.y = -1.0f;
+  }
   if (_window.getKey(vkfw::Key::eW)) {
     vec.z = 1.0f;
   } else if (_window.getKey(vkfw::Key::eS)) {
@@ -155,11 +162,12 @@ constexpr auto app::CameraController::getInputVector() const noexcept -> glm::ve
 
 constexpr auto app::CameraController::getMatrix() const noexcept -> glm::mat3x3 {
   auto const forward = getDirection();
-  glm::vec3 const upVec {0.0f, 1.0f, 0.0f};
-  auto const right = glm::cross(forward, upVec);
+  auto const right = glm::cross(forward, {0.0f, 1.0f, 0.0f});
+  glm::vec3 const upVector {glm::rotate({1.0f}, glm::half_pi<float>(), right)
+                            * glm::vec4(forward, 0.0)};
   return {
-      right,
-      upVec,
+      glm::rotate({1.0f}, glm::half_pi<float>(), upVector) * glm::vec4(forward, 0.0),
+      upVector,
       forward,
   };
 }

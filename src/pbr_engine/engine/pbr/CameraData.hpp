@@ -23,7 +23,7 @@ constexpr auto makeCameraData(glm::vec3 position, glm::vec3 target, float fov,
   static constexpr auto ZNEAR = 0.01f;
   static constexpr auto ZFAR = 1024.0f;
   return {
-      .view = glm::lookAtRH(position, target, {0.0f, 1.0f, 0.0f}),
+      .view = glm::lookAtRH(position, target, {0.0f, -1.0f, 0.0f}),
       .proj = glm::perspectiveRH_NO(fov, aspect, ZNEAR, ZFAR),
       .position = position,
   };
