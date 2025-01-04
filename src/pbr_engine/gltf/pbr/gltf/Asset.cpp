@@ -143,10 +143,13 @@ auto pbr::gltf::Asset::loadMaterial(TransferStager& stager,
   };
   auto const& colorTexture =
       _asset.textures.at(matInfo.pbrData.baseColorTexture.value().textureIndex);
+  auto const& normalTexture = _asset.textures.at(matInfo.normalTexture.value().textureIndex);
   auto material = std::make_shared<Material>(
       *_dependencies.gpu, Uniform<MaterialData>(*_dependencies.allocator, matData),
       loadImage2D(stager, colorTexture.imageIndex.value()),
       loadSampler(colorTexture.samplerIndex.value()),
+      loadImage2D(stager, normalTexture.imageIndex.value()),
+      loadSampler(normalTexture.samplerIndex.value()),
       _dependencies.materialAllocator.allocate());
   _materialCache[matInfo.name] = material;
   return material;

@@ -43,6 +43,12 @@ constexpr auto createMaterialSetLayout(pbr::core::GpuHandle const& gpu)
           .descriptorCount = 1,
           .stageFlags = vk::ShaderStageFlagBits::eFragment,
       },
+      vk::DescriptorSetLayoutBinding {
+          .binding = 2,
+          .descriptorType = vk::DescriptorType::eCombinedImageSampler,
+          .descriptorCount = 1,
+          .stageFlags = vk::ShaderStageFlagBits::eFragment,
+      },
   };
   return gpu.getDevice().createDescriptorSetLayoutUnique(
       vk::DescriptorSetLayoutCreateInfo {}.setBindings(bindings));

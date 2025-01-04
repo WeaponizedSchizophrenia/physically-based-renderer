@@ -4,7 +4,7 @@
 
 layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec3 inNormal;
-layout(location = 2) in vec3 inTangent;
+layout(location = 2) in vec4 inTangent;
 layout(location = 3) in vec2 inTexCoords;
 
 layout(location = 0) out vec3 outPosition;
@@ -28,6 +28,6 @@ void main() {
     outPosition = worldPos.xyz;
     outNormal = normalize(pc.normalModel * inNormal);
     outTangent = normalize(pc.normalModel * inTangent.xyz);
-    outBitangent = normalize(pc.normalModel * (cross(inNormal, inTangent.xyz) * inTangent.z));
+    outBitangent = normalize(pc.normalModel * (cross(inNormal, inTangent.xyz) * inTangent.w));
     outTexCoords = inTexCoords;
 }
