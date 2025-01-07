@@ -16,9 +16,15 @@ endfunction()
 
 function(compileAllShaders)
     message("Compiling shaders")
+    # Fullscreen quad
+    compileShader("fullscreen_vertex.glsl" "fullscreen_quad" "vertex")
+    # Geometry pass
+    compileShader("geometry_pass/vertex.glsl" "geometry_pass_vertex" "vertex")
+    compileShader("geometry_pass/fragment.glsl" "geometry_pass_fragment" "fragment")
     # PBR
     compileShader("pbr/vertex.glsl" "pbr_vertex" "vertex")
     compileShader("pbr/fragment.glsl" "pbr_fragment" "fragment")
+    compileShader("pbr/lighting.glsl" "pbr_lighting" "fragment")
     # Imgui
     compileShader("imgui/vertex.glsl" "imgui_vertex" "vertex")
     compileShader("imgui/fragment.glsl" "imgui_fragment" "fragment")

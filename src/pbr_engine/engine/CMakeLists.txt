@@ -21,6 +21,8 @@ target_sources(pbr_engine PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/pbr/MeshBuilder.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/pbr/Material.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/pbr/Scene.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/pbr/GBuffer.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/pbr/PbrRenderSystem.cpp
 
   ${CMAKE_CURRENT_SOURCE_DIR}/pbr/memory/Allocation.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/pbr/memory/MemoryAllocator.cpp

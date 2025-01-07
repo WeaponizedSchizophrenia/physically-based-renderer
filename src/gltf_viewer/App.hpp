@@ -1,7 +1,5 @@
 #pragma once
 
-#include "AppUi.hpp"
-#include "pbr/Scene.hpp"
 #include "pbr/Vulkan.hpp"
 
 #include "vkfw/vkfw.hpp"
@@ -10,7 +8,11 @@
 
 #include "pbr/AsyncSubmitInfo.hpp"
 #include "pbr/AsyncSubmitter.hpp"
+#include "pbr/GBuffer.hpp"
+#include "pbr/Image2D.hpp"
 #include "pbr/PbrPipeline.hpp"
+#include "pbr/PbrRenderSystem.hpp"
+#include "pbr/Scene.hpp"
 #include "pbr/Surface.hpp"
 #include "pbr/SwapchainImageView.hpp"
 #include "pbr/imgui/Renderer.hpp"
@@ -22,6 +24,8 @@
 #include <memory>
 
 #include <spdlog/logger.h>
+
+#include "AppUi.hpp"
 
 namespace app {
 class App {
@@ -43,11 +47,15 @@ class App {
   AppUi _ui;
 
   pbr::PbrPipeline _pbrPipeline;
+  pbr::PbrRenderSystem _pbrSystem;
 
   pbr::Scene _scene;
 
   // Frame data
   pbr::AsyncSubmitter _submitter;
+  pbr::GBuffer _gBuffer;
+  pbr::Image2D _hdrImage;
+  vk::Extent2D _hdrImageExtent;
 
 public:
   explicit App(std::filesystem::path path);

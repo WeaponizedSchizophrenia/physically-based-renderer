@@ -2,7 +2,8 @@
 
 #include "pbr/Vulkan.hpp"
 
-#include <cstddef>
+#include "pbr/core/VertexTraits.hpp"
+
 #include <array>
 
 #include <glm/ext/vector_float2.hpp>
@@ -16,33 +17,14 @@ struct MeshVertex {
   glm::vec4 tangent;
   glm::vec2 texCoords;
 };
-[[nodiscard]]
-consteval auto getMeshVertexAttributes() -> auto {
-  return std::array {
-      vk::VertexInputAttributeDescription {
-          .location = 0,
-          .binding = 0,
-          .format = vk::Format::eR32G32B32Sfloat,
-          .offset = offsetof(MeshVertex, position),
-      },
-      vk::VertexInputAttributeDescription {
-          .location = 1,
-          .binding = 0,
-          .format = vk::Format::eR32G32B32Sfloat,
-          .offset = offsetof(MeshVertex, normal),
-      },
-      vk::VertexInputAttributeDescription {
-          .location = 2,
-          .binding = 0,
-          .format = vk::Format::eR32G32B32A32Sfloat,
-          .offset = offsetof(MeshVertex, tangent),
-      },
-      vk::VertexInputAttributeDescription {
-          .location = 3,
-          .binding = 0,
-          .format = vk::Format::eR32G32Sfloat,
-          .offset = offsetof(MeshVertex, texCoords),
-      },
+template <> struct core::VertexTraits<MeshVertex> {
+  static constexpr std::array attributeFormats {
+      vk::Format::eR32G32B32Sfloat,
+      vk::Format::eR32G32B32Sfloat,
+      vk::Format::eR32G32B32A32Sfloat,
+      vk::Format::eR32G32Sfloat,
   };
-}
+};
 } // namespace pbr
+
+static_assert(pbr::core::Vertex<pbr::MeshVertex>, "pbr::MeshVertex does not satisfy pbr::core::Vertex");

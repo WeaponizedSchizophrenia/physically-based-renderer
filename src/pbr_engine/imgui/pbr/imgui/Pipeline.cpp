@@ -3,38 +3,25 @@
 #include "pbr/Vulkan.hpp"
 
 #include "pbr/core/GpuHandle.hpp"
+#include "pbr/core/PipelineBuilder.hpp"
+#include "pbr/core/VertexTraits.hpp"
 #include "pbr/imgui/PushConstant.hpp"
 
 #include "imgui.h"
 
 #include <array>
 #include <cassert>
-#include <cstddef>
 #include <utility>
 
-namespace constants {
-static constexpr vk::VertexInputBindingDescription VERTEX_BINDING {
-    .stride = sizeof(ImDrawVert),
-    .inputRate = vk::VertexInputRate::eVertex,
+namespace pbr::core {
+template <> struct VertexTraits<ImDrawVert> {
+  static constexpr std::array attributeFormats {
+      vk::Format::eR32G32Sfloat,
+      vk::Format::eR32G32Sfloat,
+      vk::Format::eR8G8B8A8Unorm,
+  };
 };
-static constexpr std::array VERTEX_ATTRIBUTES {
-    vk::VertexInputAttributeDescription {
-        .location = 0,
-        .format = vk::Format::eR32G32Sfloat,
-        .offset = offsetof(ImDrawVert, pos),
-    },
-    vk::VertexInputAttributeDescription {
-        .location = 1,
-        .format = vk::Format::eR32G32Sfloat,
-        .offset = offsetof(ImDrawVert, uv),
-    },
-    vk::VertexInputAttributeDescription {
-        .location = 2,
-        .format = vk::Format::eR8G8B8A8Unorm,
-        .offset = offsetof(ImDrawVert, col),
-    },
-};
-} // namespace constants
+} // namespace pbr::core
 
 namespace {
 [[nodiscard]]
@@ -64,54 +51,25 @@ createLayout(pbr::core::GpuHandle const& gpu,
 [[nodiscard]]
 constexpr auto createPipeline(pbr::core::GpuHandle const& gpu, vk::PipelineLayout layout,
                               pbr::imgui::PipelineCreateInfo info) -> vk::UniquePipeline {
-  std::array const stages {info.vertexStage, info.fragmentStage};
-  auto const vertexInput =
-      vk::PipelineVertexInputStateCreateInfo {}
-          .setVertexBindingDescriptions(constants::VERTEX_BINDING)
-          .setVertexAttributeDescriptions(constants::VERTEX_ATTRIBUTES);
-  vk::PipelineInputAssemblyStateCreateInfo const inputAssembly {
-      .topology = vk::PrimitiveTopology::eTriangleList,
-  };
-  vk::PipelineViewportStateCreateInfo const viewport {
-      .viewportCount = 1,
-      .scissorCount = 1,
-  };
-  vk::PipelineRasterizationStateCreateInfo const rasterization {.lineWidth = 1.0f};
-  vk::PipelineMultisampleStateCreateInfo const multisample {};
-  vk::PipelineColorBlendAttachmentState const colorBlendAttachment {
-      .blendEnable = vk::True,
-      .srcColorBlendFactor = vk::BlendFactor::eSrcAlpha,
-      .dstColorBlendFactor = vk::BlendFactor::eOneMinusSrcAlpha,
-      .colorBlendOp = vk::BlendOp::eAdd,
-      .srcAlphaBlendFactor = vk::BlendFactor::eOneMinusSrcAlpha,
-      .dstAlphaBlendFactor = vk::BlendFactor::eZero,
-      .alphaBlendOp = vk::BlendOp::eAdd,
-      .colorWriteMask = vk::FlagTraits<vk::ColorComponentFlagBits>::allFlags,
-  };
-  auto const colorBlend =
-      vk::PipelineColorBlendStateCreateInfo {}.setAttachments(colorBlendAttachment);
-  std::array const dynamicStates {vk::DynamicState::eViewport,
-                                  vk::DynamicState::eScissor};
-  auto const dynamicState =
-      vk::PipelineDynamicStateCreateInfo {}.setDynamicStates(dynamicStates);
-
-  auto const pipelineInfo =
-      vk::GraphicsPipelineCreateInfo {
-          .pVertexInputState = &vertexInput,
-          .pInputAssemblyState = &inputAssembly,
-          .pViewportState = &viewport,
-          .pRasterizationState = &rasterization,
-          .pMultisampleState = &multisample,
-          .pColorBlendState = &colorBlend,
-          .pDynamicState = &dynamicState,
-          .layout = layout,
-      }
-          .setStages(stages);
-  auto const renderInfo =
-      vk::PipelineRenderingCreateInfo {}.setColorAttachmentFormats(info.outputFormat);
-
   auto [result, pipeline] = gpu.getDevice().createGraphicsPipelineUnique(
-      nullptr, vk::StructureChain {pipelineInfo, renderInfo}.get());
+      nullptr,
+      pbr::core::PipelineBuilder()
+          .addStage(info.vertexStage)
+          .addStage(info.fragmentStage)
+          .addVertexBinding<ImDrawVert>()
+          .addOutputFormat(
+              info.outputFormat,
+              {
+                  .blendEnable = vk::True,
+                  .srcColorBlendFactor = vk::BlendFactor::eSrcAlpha,
+                  .dstColorBlendFactor = vk::BlendFactor::eOneMinusSrcAlpha,
+                  .colorBlendOp = vk::BlendOp::eAdd,
+                  .srcAlphaBlendFactor = vk::BlendFactor::eOneMinusSrcAlpha,
+                  .dstAlphaBlendFactor = vk::BlendFactor::eZero,
+                  .alphaBlendOp = vk::BlendOp::eAdd,
+                  .colorWriteMask = vk::FlagTraits<vk::ColorComponentFlagBits>::allFlags,
+              })
+          .build(layout));
   assert(result == vk::Result::eSuccess);
   return std::move(pipeline);
 }

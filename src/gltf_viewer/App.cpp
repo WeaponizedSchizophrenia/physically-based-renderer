@@ -1,5 +1,7 @@
 #include "App.hpp"
 
+#include "pbr/Vulkan.hpp"
+
 #include "vkfw/vkfw.hpp"
 
 #include "pbr/utils/Conversions.hpp"
@@ -7,12 +9,14 @@
 #include "pbr/core/GpuHandle.hpp"
 
 #include "pbr/AsyncSubmitInfo.hpp"
+#include "pbr/GBuffer.hpp"
+#include "pbr/Image2D.hpp"
 #include "pbr/PbrPipeline.hpp"
+#include "pbr/PbrRenderSystem.hpp"
 #include "pbr/Scene.hpp"
 #include "pbr/SwapchainImageView.hpp"
-#include "pbr/gltf/Asset.hpp"
 #include "pbr/TransferStager.hpp"
-#include "pbr/Vulkan.hpp"
+#include "pbr/gltf/Asset.hpp"
 #include "pbr/gltf/Loader.hpp"
 #include "pbr/imgui/Pipeline.hpp"
 #include "pbr/imgui/Renderer.hpp"
@@ -117,6 +121,40 @@ constexpr auto createPbrPipeline(pbr::core::GpuHandle const& gpu,
   };
 }
 [[nodiscard]]
+constexpr auto
+createPbrRenderSystem(pbr::core::SharedGpuHandle gpu) -> pbr::PbrRenderSystem {
+  auto const [geometryVertex, geometryFragment] =
+      loadShaders(*gpu, {.vertexName = "geometry_pass_vertex.spv",
+                         .fragmentName = "geometry_pass_fragment.spv"});
+  auto const [lightingVertex, lightingFragment] = loadShaders(
+      *gpu, {.vertexName = "fullscreen_quad.spv", .fragmentName = "pbr_lighting.spv"});
+  return {
+      std::move(gpu),
+      pbr::PbrRenderSystemCreateInfo {
+          .geometryVertexShader {
+              .stage = vk::ShaderStageFlagBits::eVertex,
+              .module = geometryVertex.get(),
+              .pName = "main",
+          },
+          .geometryFragmentShader {
+              .stage = vk::ShaderStageFlagBits::eFragment,
+              .module = geometryFragment.get(),
+              .pName = "main",
+          },
+          .lightingVertexShader {
+              .stage = vk::ShaderStageFlagBits::eVertex,
+              .module = lightingVertex.get(),
+              .pName = "main",
+          },
+          .lightingFragmentShader {
+              .stage = vk::ShaderStageFlagBits::eFragment,
+              .module = lightingFragment.get(),
+              .pName = "main",
+          },
+      },
+  };
+}
+[[nodiscard]]
 constexpr auto loadScene(std::filesystem::path const& path,
                          pbr::gltf::AssetDependencies dependencies,
                          vk::CommandPool cmdPool) -> pbr::Scene {
@@ -202,6 +240,7 @@ app::App::App(std::filesystem::path path)
                                            _commandPool.get(),
                                            _surface.getFormat().format))
     , _pbrPipeline(::createPbrPipeline(*_gpu, _surface.getFormat().format))
+    , _pbrSystem(::createPbrRenderSystem(_gpu))
     , _scene(::loadScene(
           _path,
           {
@@ -212,7 +251,28 @@ app::App::App(std::filesystem::path path)
                                   _pbrPipeline.getMaterialSetLayout()},
           },
           _commandPool.get()))
-    , _submitter(_gpu) {
+    , _submitter(_gpu)
+    , _gBuffer(_pbrSystem.allocateGBuffer(
+          *_allocator, pbr::utils::toExtent(_window->getFramebufferSize())))
+    , _hdrImage(
+          *_gpu, pbr::PbrRenderSystem::LIGHTING_PASS_OUTPUT_FORMAT,
+          vk::ImageAspectFlagBits::eColor,
+          _allocator->allocateImage(
+              {
+                  .imageType = vk::ImageType::e2D,
+                  .format = pbr::PbrRenderSystem::LIGHTING_PASS_OUTPUT_FORMAT,
+                  .extent {
+                      .width = static_cast<std::uint32_t>(_window->getFramebufferWidth()),
+                      .height =
+                          static_cast<std::uint32_t>(_window->getFramebufferHeight()),
+                      .depth = 1,
+                  },
+                  .mipLevels = 1,
+                  .arrayLayers = 1,
+                  .usage = vk::ImageUsageFlagBits::eColorAttachment,
+              },
+              {}))
+    , _hdrImageExtent(pbr::utils::toExtent(_window->getFramebufferSize())) {
   setupWindowCallbacks();
 
   _logger->info("Initialized app to view {}", _path.c_str());
@@ -256,6 +316,8 @@ auto app::App::setupWindowCallbacks() -> void {
   _window->callbacks()->on_window_resize = [this](vkfw::Window const&, std::size_t width,
                                                   std::size_t height) {
     _surface.recreateSwapchain(pbr::utils::toExtent(width, height));
+    _gBuffer =
+        _pbrSystem.allocateGBuffer(*_allocator, pbr::utils::toExtent(width, height));
     _controller.onWindowResize(width, height);
   };
   _window->callbacks()->on_window_focus = [](vkfw::Window const& window, bool focus) {
@@ -403,6 +465,8 @@ auto app::App::renderAndPresent() -> void {
   asyncInfo.cmdBuffer->reset();
   asyncInfo.cmdBuffer->begin(vk::CommandBufferBeginInfo {
       .flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
+  _pbrSystem.render(asyncInfo.cmdBuffer.get(), _scene, _gBuffer, _hdrImage,
+                    _hdrImageExtent);
   recordCommands(asyncInfo.cmdBuffer.get(), *imageView);
   asyncInfo.cmdBuffer->end();
 
