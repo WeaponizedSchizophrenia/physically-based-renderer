@@ -251,7 +251,6 @@ app::App::App(std::filesystem::path path)
                                   _pbrPipeline.getMaterialSetLayout()},
           },
           _commandPool.get()))
-    , _submitter(_gpu)
     , _gBuffer(_pbrSystem.allocateGBuffer(
           *_allocator, pbr::utils::toExtent(_window->getFramebufferSize())))
     , _hdrImage(
@@ -272,7 +271,8 @@ app::App::App(std::filesystem::path path)
                   .usage = vk::ImageUsageFlagBits::eColorAttachment,
               },
               {}))
-    , _hdrImageExtent(pbr::utils::toExtent(_window->getFramebufferSize())) {
+    , _hdrImageExtent(pbr::utils::toExtent(_window->getFramebufferSize()))
+    , _submitter(_gpu) {
   setupWindowCallbacks();
 
   _logger->info("Initialized app to view {}", _path.c_str());

@@ -52,10 +52,10 @@ class App {
   pbr::Scene _scene;
 
   // Frame data
-  pbr::AsyncSubmitter _submitter;
   pbr::GBuffer _gBuffer;
   pbr::Image2D _hdrImage;
   vk::Extent2D _hdrImageExtent;
+  pbr::AsyncSubmitter _submitter;
 
 public:
   explicit App(std::filesystem::path path);
