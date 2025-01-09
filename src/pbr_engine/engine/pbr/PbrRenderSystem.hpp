@@ -18,7 +18,7 @@ struct PbrRenderSystemCreateInfo {
 };
 class PbrRenderSystem {
 public:
-  static constexpr auto LIGHTING_PASS_OUTPUT_FORMAT = vk::Format::eR16G16B16A16Unorm;
+  static constexpr auto LIGHTING_PASS_OUTPUT_FORMAT = vk::Format::eR16G16B16A16Sfloat;
 
 private:
   core::SharedGpuHandle _gpu;
