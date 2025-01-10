@@ -28,4 +28,6 @@ function(compileAllShaders)
     # Imgui
     compileShader("imgui/vertex.glsl" "imgui_vertex" "vertex")
     compileShader("imgui/fragment.glsl" "imgui_fragment" "fragment")
+    # Tonemappers
+    compileShader("tonemappers/aces+gamma.glsl" "tm_aces+gamma" "compute")
 endfunction()
