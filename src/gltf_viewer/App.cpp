@@ -213,7 +213,7 @@ constexpr auto createTonemapper(pbr::core::SharedGpuHandle gpu) -> pbr::Tonemapp
 }
 } // namespace
 
-app::App::App(std::filesystem::path path)
+app::App::App(std::filesystem::path path, bool vkValidation)
     : _logger(::createLogger())
     , _path(::validatePath(std::move(path)))
     , _window(vkfw::createWindowUnique(constants::DEFAULT_WINDOW_WIDTH,
@@ -222,7 +222,7 @@ app::App::App(std::filesystem::path path)
     , _gpu(pbr::core::makeGpuHandle({
           .extensions = vkfw::getRequiredInstanceExtensions(),
           .presentPredicate = vkfw::getPhysicalDevicePresentationSupport,
-          .enableValidation = true,
+          .enableValidation = vkValidation,
       }))
     , _allocator(std::make_shared<pbr::MemoryAllocator>(_gpu))
     , _surface(_gpu, vkfw::createWindowSurfaceUnique(_gpu->getInstance(), _window.get()),
@@ -273,6 +273,9 @@ app::App::App(std::filesystem::path path)
   setupWindowCallbacks();
 
   _logger->info("Initialized app to view {}", _path.c_str());
+  if (vkValidation) {
+    _logger->info("Vulkan validation is enabled");
+  }
 }
 
 auto app::App::run() -> void {

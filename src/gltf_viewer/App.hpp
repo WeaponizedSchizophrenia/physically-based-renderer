@@ -59,7 +59,7 @@ class App {
   pbr::AsyncSubmitter _submitter;
 
 public:
-  explicit App(std::filesystem::path path);
+  explicit App(std::filesystem::path path, bool vkValidation);
 
   App(const App&) = delete;
   auto operator=(const App&) -> App& = delete;
