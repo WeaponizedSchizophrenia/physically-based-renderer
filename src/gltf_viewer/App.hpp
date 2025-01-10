@@ -9,12 +9,13 @@
 #include "pbr/AsyncSubmitInfo.hpp"
 #include "pbr/AsyncSubmitter.hpp"
 #include "pbr/GBuffer.hpp"
-#include "pbr/Image2D.hpp"
+#include "pbr/HdrImage.hpp"
 #include "pbr/PbrPipeline.hpp"
 #include "pbr/PbrRenderSystem.hpp"
 #include "pbr/Scene.hpp"
 #include "pbr/Surface.hpp"
 #include "pbr/SwapchainImageView.hpp"
+#include "pbr/TonemapperSystem.hpp"
 #include "pbr/imgui/Renderer.hpp"
 #include "pbr/memory/IAllocator.hpp"
 
@@ -48,13 +49,13 @@ class App {
 
   pbr::PbrPipeline _pbrPipeline;
   pbr::PbrRenderSystem _pbrSystem;
+  pbr::TonemapperSystem _tonemapper;
 
   pbr::Scene _scene;
 
   // Frame data
   pbr::GBuffer _gBuffer;
-  pbr::Image2D _hdrImage;
-  vk::Extent2D _hdrImageExtent;
+  pbr::HdrImage _hdrImage;
   pbr::AsyncSubmitter _submitter;
 
 public:

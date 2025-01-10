@@ -1,5 +1,6 @@
 #include "App.hpp"
 
+#include "pbr/TonemapperSystem.hpp"
 #include "pbr/Vulkan.hpp"
 
 #include "vkfw/vkfw.hpp"
@@ -10,7 +11,6 @@
 
 #include "pbr/AsyncSubmitInfo.hpp"
 #include "pbr/GBuffer.hpp"
-#include "pbr/Image2D.hpp"
 #include "pbr/PbrPipeline.hpp"
 #include "pbr/PbrRenderSystem.hpp"
 #include "pbr/Scene.hpp"
@@ -82,6 +82,13 @@ constexpr auto validatePath(std::filesystem::path path) -> std::filesystem::path
   }
   return path;
 }
+[[nodiscard]]
+constexpr auto loadShader(pbr::core::GpuHandle const& gpu,
+                          std::string_view name) -> vk::UniqueShaderModule {
+  auto const spv = loadBinary(std::filesystem::path("assets/shaders/compiled") / name);
+  return gpu.getDevice().createShaderModuleUnique(
+      vk::ShaderModuleCreateInfo {}.setCode(spv));
+}
 struct ShaderNames {
   std::string_view vertexName {};
   std::string_view fragmentName {};
@@ -89,14 +96,8 @@ struct ShaderNames {
 [[nodiscard]]
 constexpr auto loadShaders(pbr::core::GpuHandle const& gpu, ShaderNames names)
     -> std::pair<vk::UniqueShaderModule, vk::UniqueShaderModule> {
-  auto const vertexSpv =
-      loadBinary(std::filesystem::path("assets/shaders/compiled/") / names.vertexName);
-  auto const fragmentSpv =
-      loadBinary(std::filesystem::path("assets/shaders/compiled/") / names.fragmentName);
-  return std::make_pair(gpu.getDevice().createShaderModuleUnique(
-                            vk::ShaderModuleCreateInfo {}.setCode(vertexSpv)),
-                        gpu.getDevice().createShaderModuleUnique(
-                            vk::ShaderModuleCreateInfo {}.setCode(fragmentSpv)));
+  return std::make_pair(loadShader(gpu, names.vertexName),
+                        loadShader(gpu, names.fragmentName));
 }
 [[nodiscard]]
 constexpr auto createPbrPipeline(pbr::core::GpuHandle const& gpu,
@@ -198,6 +199,18 @@ constexpr auto createImguiRenderer(pbr::core::SharedGpuHandle gpu,
       },
   };
 }
+[[nodiscard]]
+constexpr auto createTonemapper(pbr::core::SharedGpuHandle gpu) -> pbr::TonemapperSystem {
+  auto const shader = loadShader(*gpu, "tm_aces+gamma.spv");
+  return {
+      std::move(gpu),
+      vk::PipelineShaderStageCreateInfo {
+          .stage = vk::ShaderStageFlagBits::eCompute,
+          .module = shader.get(),
+          .pName = "main",
+      },
+  };
+}
 } // namespace
 
 app::App::App(std::filesystem::path path)
@@ -241,6 +254,7 @@ app::App::App(std::filesystem::path path)
                                            _surface.getFormat().format))
     , _pbrPipeline(::createPbrPipeline(*_gpu, _surface.getFormat().format))
     , _pbrSystem(::createPbrRenderSystem(_gpu))
+    , _tonemapper(::createTonemapper(_gpu))
     , _scene(::loadScene(
           _path,
           {
@@ -253,25 +267,8 @@ app::App::App(std::filesystem::path path)
           _commandPool.get()))
     , _gBuffer(_pbrSystem.allocateGBuffer(
           *_allocator, pbr::utils::toExtent(_window->getFramebufferSize())))
-    , _hdrImage(
-          *_gpu, pbr::PbrRenderSystem::LIGHTING_PASS_OUTPUT_FORMAT,
-          vk::ImageAspectFlagBits::eColor,
-          _allocator->allocateImage(
-              {
-                  .imageType = vk::ImageType::e2D,
-                  .format = pbr::PbrRenderSystem::LIGHTING_PASS_OUTPUT_FORMAT,
-                  .extent {
-                      .width = static_cast<std::uint32_t>(_window->getFramebufferWidth()),
-                      .height =
-                          static_cast<std::uint32_t>(_window->getFramebufferHeight()),
-                      .depth = 1,
-                  },
-                  .mipLevels = 1,
-                  .arrayLayers = 1,
-                  .usage = vk::ImageUsageFlagBits::eColorAttachment,
-              },
-              {}))
-    , _hdrImageExtent(pbr::utils::toExtent(_window->getFramebufferSize()))
+    , _hdrImage(_tonemapper.allocateHdrImage(
+          *_allocator, pbr::utils::toExtent(_window->getFramebufferSize())))
     , _submitter(_gpu) {
   setupWindowCallbacks();
 
@@ -370,53 +367,33 @@ auto app::App::makeAsyncSubmitInfo() -> pbr::AsyncSubmitInfo {
 
 auto app::App::recordCommands(vk::CommandBuffer cmdBuffer,
                               pbr::SwapchainImageView imageView) -> void {
-  { // Swith imageView to colorAttachmentOptimal
-    vk::ImageMemoryBarrier2 const barrier {
-        .srcStageMask = vk::PipelineStageFlagBits2::eTopOfPipe,
-        .dstStageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput,
-        .dstAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite,
-        .newLayout = vk::ImageLayout::eColorAttachmentOptimal,
-        .image = imageView.getImage(),
-        .subresourceRange {
-            .aspectMask = vk::ImageAspectFlagBits::eColor,
-            .levelCount = 1,
-            .layerCount = 1,
-        },
-    };
-    cmdBuffer.pipelineBarrier2(vk::DependencyInfo {}.setImageMemoryBarriers(barrier));
-  }
-  { // render scene to imageView
-    vk::RenderingAttachmentInfo const attachmentInfo {
-        .imageView = imageView.getImageView(),
-        .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
-        .loadOp = vk::AttachmentLoadOp::eClear,
-        .storeOp = vk::AttachmentStoreOp::eStore,
-        .clearValue = vk::ClearColorValue {}.setFloat32({0.0f, 0.0f, 0.0f, 1.0f}),
-    };
-    auto const renderInfo =
-        vk::RenderingInfo {
-            .renderArea {
-                .extent = imageView.getExtent(),
-            },
-            .layerCount = 1,
-        }
-            .setColorAttachments(attachmentInfo);
+  // Render the scene
+  _pbrSystem.render(cmdBuffer, _scene, _gBuffer, _hdrImage.getImage(),
+                    _hdrImage.getExtent());
 
-    cmdBuffer.beginRendering(renderInfo);
-    { // set scissor and viewport for imageView
-      auto const extent = imageView.getExtent();
-      cmdBuffer.setScissor(0, vk::Rect2D {.extent = extent});
-      cmdBuffer.setViewport(0, vk::Viewport {
-                                   .width = static_cast<float>(extent.width),
-                                   .height = static_cast<float>(extent.height),
-                                   .maxDepth = 1.0f,
-                               });
+  // Run tonemapper
+  _hdrImage.updateOutputTexture(imageView.getImage(), imageView.getImageView());
+  _tonemapper.run(cmdBuffer, _hdrImage);
+
+  { // Render imgui
+    {
+      vk::ImageMemoryBarrier2 const barrier {
+          .srcStageMask = vk::PipelineStageFlagBits2::eComputeShader,
+          .srcAccessMask = vk::AccessFlagBits2::eShaderStorageWrite,
+          .dstStageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+          .dstAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite,
+          .oldLayout = vk::ImageLayout::eGeneral,
+          .newLayout = vk::ImageLayout::eColorAttachmentOptimal,
+          .image = imageView.getImage(),
+          .subresourceRange {
+              .aspectMask = vk::ImageAspectFlagBits::eColor,
+              .levelCount = 1,
+              .layerCount = 1,
+          },
+      };
+      cmdBuffer.pipelineBarrier2(vk::DependencyInfo {}.setImageMemoryBarriers(barrier));
     }
-    pbr::renderScene(cmdBuffer, _pbrPipeline, _scene);
-    cmdBuffer.endRendering();
-  }
-  { // render imgui to imageView
-    vk::RenderingAttachmentInfo const colorAttachmentInfo {
+    vk::RenderingAttachmentInfo const attachmentInfo {
         .imageView = imageView.getImageView(),
         .imageLayout = vk::ImageLayout::eColorAttachmentOptimal,
         .loadOp = vk::AttachmentLoadOp::eLoad,
@@ -429,26 +406,10 @@ auto app::App::recordCommands(vk::CommandBuffer cmdBuffer,
             },
             .layerCount = 1,
         }
-            .setColorAttachments(colorAttachmentInfo);
+            .setColorAttachments(attachmentInfo);
     cmdBuffer.beginRendering(renderInfo);
     _imguiRenderer.render(cmdBuffer);
     cmdBuffer.endRendering();
-  }
-  { // switch imageView to presentSrc
-    vk::ImageMemoryBarrier2 const barrier {
-        .srcStageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput,
-        .srcAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite,
-        .dstStageMask = vk::PipelineStageFlagBits2::eBottomOfPipe,
-        .oldLayout = vk::ImageLayout::eColorAttachmentOptimal,
-        .newLayout = vk::ImageLayout::ePresentSrcKHR,
-        .image = imageView.getImage(),
-        .subresourceRange {
-            .aspectMask = vk::ImageAspectFlagBits::eColor,
-            .levelCount = 1,
-            .layerCount = 1,
-        },
-    };
-    cmdBuffer.pipelineBarrier2(vk::DependencyInfo {}.setImageMemoryBarriers(barrier));
   }
 }
 
@@ -465,9 +426,25 @@ auto app::App::renderAndPresent() -> void {
   asyncInfo.cmdBuffer->reset();
   asyncInfo.cmdBuffer->begin(vk::CommandBufferBeginInfo {
       .flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
-  _pbrSystem.render(asyncInfo.cmdBuffer.get(), _scene, _gBuffer, _hdrImage,
-                    _hdrImageExtent);
+
   recordCommands(asyncInfo.cmdBuffer.get(), *imageView);
+  {
+    vk::ImageMemoryBarrier2 const barrier {
+        .srcStageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+        .srcAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite,
+        .dstStageMask = vk::PipelineStageFlagBits2::eBottomOfPipe,
+        .oldLayout = vk::ImageLayout::eColorAttachmentOptimal,
+        .newLayout = vk::ImageLayout::ePresentSrcKHR,
+        .image = imageView->getImage(),
+        .subresourceRange {
+            .aspectMask = vk::ImageAspectFlagBits::eColor,
+            .levelCount = 1,
+            .layerCount = 1,
+        },
+    };
+    asyncInfo.cmdBuffer->pipelineBarrier2(
+        vk::DependencyInfo {}.setImageMemoryBarriers(barrier));
+  }
   asyncInfo.cmdBuffer->end();
 
   _submitter.submit(std::move(asyncInfo));

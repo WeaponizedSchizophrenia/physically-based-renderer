@@ -109,7 +109,8 @@ auto pbr::core::Swapchain::getSwapchainCreateInfo(
       .imageColorSpace = _format.colorSpace,
       .imageExtent = _extent,
       .imageArrayLayers = 1,
-      .imageUsage = vk::ImageUsageFlagBits::eColorAttachment,
+      .imageUsage =
+          vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eStorage,
       .preTransform = capabilities.currentTransform,
       .presentMode = _presentMode,
   };
