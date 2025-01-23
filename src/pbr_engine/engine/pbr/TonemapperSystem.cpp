@@ -129,6 +129,6 @@ auto pbr::TonemapperSystem::run(vk::CommandBuffer cmdBuffer,
                                hdrImage.getDescriptorSet(), {});
 
   auto const extent = hdrImage.getExtent();
-  cmdBuffer.dispatch(std::ceil(extent.width / constants::LOCAL_SIZE),
-                     std::ceil(extent.height / constants::LOCAL_SIZE), 1);
+  cmdBuffer.dispatch(std::ceil(static_cast<float>(extent.width) / constants::LOCAL_SIZE),
+                     std::ceil(static_cast<float>(extent.height) / constants::LOCAL_SIZE), 1);
 }
