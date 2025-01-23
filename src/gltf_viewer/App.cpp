@@ -316,8 +316,6 @@ auto app::App::setupWindowCallbacks() -> void {
   _window->callbacks()->on_window_resize = [this](vkfw::Window const&, std::size_t width,
                                                   std::size_t height) {
     _surface.recreateSwapchain(pbr::utils::toExtent(width, height));
-    _gBuffer =
-        _pbrSystem.allocateGBuffer(*_allocator, pbr::utils::toExtent(width, height));
     _controller.onWindowResize(width, height);
   };
   _window->callbacks()->on_window_focus = [](vkfw::Window const& window, bool focus) {
@@ -416,6 +414,18 @@ auto app::App::recordCommands(vk::CommandBuffer cmdBuffer,
   }
 }
 
+auto app::App::resizeBuffers() -> void {
+  auto const windowExtent = pbr::utils::toExtent(_window->getFramebufferSize());
+
+  if(_gBuffer.getExtent() != windowExtent) {
+    _gBuffer = _pbrSystem.allocateGBuffer(*_allocator, windowExtent);
+  }
+
+  if(_hdrImage.getExtent() != windowExtent) {
+    _hdrImage = _tonemapper.allocateHdrImage(*_allocator, windowExtent);
+  }
+}
+
 auto app::App::renderAndPresent() -> void {
   auto asyncInfo = _submitter.isSubmitted() ? _submitter.wait() : makeAsyncSubmitInfo();
   assert(asyncInfo.waitSemaphore.has_value());
@@ -429,6 +439,8 @@ auto app::App::renderAndPresent() -> void {
   asyncInfo.cmdBuffer->reset();
   asyncInfo.cmdBuffer->begin(vk::CommandBufferBeginInfo {
       .flags = vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
+
+  resizeBuffers();
 
   recordCommands(asyncInfo.cmdBuffer.get(), *imageView);
   {
