@@ -38,6 +38,7 @@
 #include <fstream>
 #include <ios>
 #include <memory>
+#include <ranges>
 #include <stdexcept>
 #include <string_view>
 #include <utility>
@@ -57,8 +58,8 @@ constexpr static auto DEFAULT_WINDOW_HEIGHT = 720uz;
 
 namespace {
 [[nodiscard]]
-constexpr auto
-loadBinary(std::filesystem::path const& path) -> std::vector<std::uint32_t> {
+constexpr auto loadBinary(std::filesystem::path const& path)
+    -> std::vector<std::uint32_t> {
   std::ifstream file(path, std::ios::in | std::ios::binary);
   auto const size = std::filesystem::file_size(path);
   std::vector<std::uint32_t> binary(size / 4);
@@ -83,8 +84,8 @@ constexpr auto validatePath(std::filesystem::path path) -> std::filesystem::path
   return path;
 }
 [[nodiscard]]
-constexpr auto loadShader(pbr::core::GpuHandle const& gpu,
-                          std::string_view name) -> vk::UniqueShaderModule {
+constexpr auto loadShader(pbr::core::GpuHandle const& gpu, std::string_view name)
+    -> vk::UniqueShaderModule {
   auto const spv = loadBinary(std::filesystem::path("assets/shaders/compiled") / name);
   return gpu.getDevice().createShaderModuleUnique(
       vk::ShaderModuleCreateInfo {}.setCode(spv));
@@ -100,8 +101,8 @@ constexpr auto loadShaders(pbr::core::GpuHandle const& gpu, ShaderNames names)
                         loadShader(gpu, names.fragmentName));
 }
 [[nodiscard]]
-constexpr auto createPbrPipeline(pbr::core::GpuHandle const& gpu,
-                                 vk::Format outputFormat) -> pbr::PbrPipeline {
+constexpr auto createPbrPipeline(pbr::core::GpuHandle const& gpu, vk::Format outputFormat)
+    -> pbr::PbrPipeline {
   auto const [vertexModule, fragmentModule] = loadShaders(
       gpu, {.vertexName = "pbr_vertex.spv", .fragmentName = "pbr_fragment.spv"});
   return {
@@ -122,8 +123,8 @@ constexpr auto createPbrPipeline(pbr::core::GpuHandle const& gpu,
   };
 }
 [[nodiscard]]
-constexpr auto
-createPbrRenderSystem(pbr::core::SharedGpuHandle gpu) -> pbr::PbrRenderSystem {
+constexpr auto createPbrRenderSystem(pbr::core::SharedGpuHandle gpu)
+    -> pbr::PbrRenderSystem {
   auto const [geometryVertex, geometryFragment] =
       loadShaders(*gpu, {.vertexName = "geometry_pass_vertex.spv",
                          .fragmentName = "geometry_pass_fragment.spv"});
@@ -296,10 +297,17 @@ auto app::App::run() -> void {
     _ui.render(frameDuration);
 
     _controller.update(deltaTime);
-    _scene.camera->set(_controller.getCameraData());
-    _scene.meshes.front().transform.rotation =
-        glm::rotate(_scene.meshes.front().transform.rotation,
-                    static_cast<float>(deltaTime), {0.0f, 1.0f, 0.0f});
+    if (auto const camera = _scene.findCamera(); camera) {
+      camera.value()->set(_controller.getCameraData());
+    }
+    for (auto& node : _scene.iterateNodes() | std::views::filter([](auto const& node) {
+                        return node.getMesh() != nullptr;
+                      }) | std::views::take(9)) {
+      auto transform = node.getTransform();
+      transform.rotation = glm::rotate(transform.rotation, static_cast<float>(deltaTime),
+                                       {0.0f, 1.0f, 0.0f});
+      node.setTransform(transform);
+    }
 
     ImGui::Render();
     renderAndPresent();
@@ -417,11 +425,11 @@ auto app::App::recordCommands(vk::CommandBuffer cmdBuffer,
 auto app::App::resizeBuffers() -> void {
   auto const windowExtent = pbr::utils::toExtent(_window->getFramebufferSize());
 
-  if(_gBuffer.getExtent() != windowExtent) {
+  if (_gBuffer.getExtent() != windowExtent) {
     _gBuffer = _pbrSystem.allocateGBuffer(*_allocator, windowExtent);
   }
 
-  if(_hdrImage.getExtent() != windowExtent) {
+  if (_hdrImage.getExtent() != windowExtent) {
     _hdrImage = _tonemapper.allocateHdrImage(*_allocator, windowExtent);
   }
 }

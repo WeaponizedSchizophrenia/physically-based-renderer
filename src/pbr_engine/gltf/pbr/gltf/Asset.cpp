@@ -116,8 +116,8 @@ auto pbr::gltf::Asset::loadSampler(std::size_t index)
   return sampler;
 }
 
-auto pbr::gltf::Asset::loadImage2D(TransferStager& stager,
-                                   std::size_t index) -> std::shared_ptr<Image2D> {
+auto pbr::gltf::Asset::loadImage2D(TransferStager& stager, std::size_t index)
+    -> std::shared_ptr<Image2D> {
   auto const& image = _asset.images.at(index);
   if (auto iter = _imageCache.find(image.name); iter != _imageCache.end()) {
     return iter->second;
@@ -129,8 +129,8 @@ auto pbr::gltf::Asset::loadImage2D(TransferStager& stager,
   return image2D;
 }
 
-auto pbr::gltf::Asset::loadMaterial(TransferStager& stager,
-                                    std::size_t index) -> std::shared_ptr<Material> {
+auto pbr::gltf::Asset::loadMaterial(TransferStager& stager, std::size_t index)
+    -> std::shared_ptr<Material> {
   auto const& matInfo = _asset.materials.at(index);
   if (auto iter = _materialCache.find(matInfo.name); iter != _materialCache.end()) {
     return iter->second;
@@ -143,7 +143,8 @@ auto pbr::gltf::Asset::loadMaterial(TransferStager& stager,
   };
   auto const& colorTexture =
       _asset.textures.at(matInfo.pbrData.baseColorTexture.value().textureIndex);
-  auto const& normalTexture = _asset.textures.at(matInfo.normalTexture.value().textureIndex);
+  auto const& normalTexture =
+      _asset.textures.at(matInfo.normalTexture.value().textureIndex);
   auto material = std::make_shared<Material>(
       *_dependencies.gpu, Uniform<MaterialData>(*_dependencies.allocator, matData),
       loadImage2D(stager, colorTexture.imageIndex.value()),
@@ -203,8 +204,8 @@ auto pbr::gltf::Asset::loadPrimitive(TransferStager& stager,
   };
 }
 
-auto pbr::gltf::Asset::loadMesh(TransferStager& stager,
-                                std::size_t index) -> std::shared_ptr<Mesh> {
+auto pbr::gltf::Asset::loadMesh(TransferStager& stager, std::size_t index)
+    -> std::shared_ptr<Mesh> {
   auto const& meshInfo = _asset.meshes.at(index);
   if (auto iter = _meshCache.find(meshInfo.name); iter != _meshCache.end()) {
     return iter->second;
@@ -230,28 +231,27 @@ auto pbr::gltf::Asset::loadMesh(TransferStager& stager,
 }
 
 auto pbr::gltf::Asset::loadScene(TransferStager& stager, std::size_t index) -> Scene {
-  Scene scene {};
+  Scene scene;
+  scene.addNode(Node()).setCamera(
+      std::make_shared<CameraUniform>(*_dependencies.gpu, *_dependencies.allocator,
+                                      _dependencies.cameraAllocator.allocate()));
   fastgltf::iterateSceneNodes(
       _asset, index, fastgltf::math::fmat4x4(),
       [&](fastgltf::Node const& node, fastgltf::math::fmat4x4 const& model) {
+        fastgltf::math::fvec3 position {};
+        fastgltf::math::fquat rotation {};
+        fastgltf::math::fvec3 scale {};
+        fastgltf::math::decomposeTransformMatrix(model, scale, rotation, position);
+        Transform const transform {
+            .position {position.x(), position.y(), position.z()},
+            .rotation {rotation.w(), rotation.x(), rotation.y(), rotation.z()},
+            .scale {scale.x(), scale.y(), scale.z()},
+        };
+        auto& nodeRef = scene.addNode(Node(transform));
+
         if (node.meshIndex.has_value()) {
-          fastgltf::math::fvec3 position {};
-          fastgltf::math::fquat rotation {};
-          fastgltf::math::fvec3 scale {};
-          fastgltf::math::decomposeTransformMatrix(model, scale, rotation, position);
-          scene.meshes.emplace_back(
-              loadMesh(stager, *node.meshIndex),
-              Transform {
-                  .position {position.x(), position.y(), position.z()},
-                  .rotation {rotation.w(), rotation.x(), rotation.y(), rotation.z()},
-                  .scale {scale.x(), scale.y(), scale.z()},
-              });
+          nodeRef.setMesh(loadMesh(stager, *node.meshIndex));
         }
       });
-  if (scene.camera == nullptr) {
-    scene.camera =
-        std::make_shared<CameraUniform>(*_dependencies.gpu, *_dependencies.allocator,
-                                        _dependencies.cameraAllocator.allocate());
-  }
   return scene;
 }

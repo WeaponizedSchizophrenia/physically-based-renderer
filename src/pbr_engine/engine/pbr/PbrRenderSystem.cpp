@@ -65,8 +65,8 @@ constexpr auto createMaterialDescriptorSetLayout(pbr::core::GpuHandle const& gpu
       vk::DescriptorSetLayoutCreateInfo {}.setBindings(bindings));
 }
 [[nodiscard]]
-constexpr auto
-createGBufferSampler(pbr::core::GpuHandle const& gpu) -> vk::UniqueSampler {
+constexpr auto createGBufferSampler(pbr::core::GpuHandle const& gpu)
+    -> vk::UniqueSampler {
   return gpu.getDevice().createSamplerUnique({
       .magFilter = vk::Filter::eLinear,
       .minFilter = vk::Filter::eLinear,
@@ -86,9 +86,10 @@ constexpr auto createDepthSampler(pbr::core::GpuHandle const& gpu) -> vk::Unique
   });
 }
 [[nodiscard]]
-constexpr auto createGBufferDescriptorSetLayout(
-    pbr::core::GpuHandle const& gpu, vk::Sampler gBufferSampler,
-    vk::Sampler depthSampler) -> vk::UniqueDescriptorSetLayout {
+constexpr auto createGBufferDescriptorSetLayout(pbr::core::GpuHandle const& gpu,
+                                                vk::Sampler gBufferSampler,
+                                                vk::Sampler depthSampler)
+    -> vk::UniqueDescriptorSetLayout {
   std::array const bindings {
       vk::DescriptorSetLayoutBinding {
           .binding = 0,
@@ -127,9 +128,9 @@ constexpr auto createGBufferDescriptorSetLayout(
       vk::DescriptorSetLayoutCreateInfo {}.setBindings(bindings));
 }
 [[nodiscard]]
-constexpr auto
-createGBufferDescriptorPool(pbr::core::GpuHandle const& gpu,
-                            std::uint32_t maxSetCount) -> vk::UniqueDescriptorPool {
+constexpr auto createGBufferDescriptorPool(pbr::core::GpuHandle const& gpu,
+                                           std::uint32_t maxSetCount)
+    -> vk::UniqueDescriptorPool {
   std::array const sizes {
       vk::DescriptorPoolSize {
           .type = vk::DescriptorType::eSampledImage,
@@ -151,9 +152,10 @@ createGBufferDescriptorPool(pbr::core::GpuHandle const& gpu,
                                                         .setPoolSizes(sizes));
 }
 [[nodiscard]]
-constexpr auto createGeometryPipelineLayout(
-    pbr::core::GpuHandle const& gpu,
-    std::span<vk::DescriptorSetLayout const> descLayouts) -> vk::UniquePipelineLayout {
+constexpr auto
+createGeometryPipelineLayout(pbr::core::GpuHandle const& gpu,
+                             std::span<vk::DescriptorSetLayout const> descLayouts)
+    -> vk::UniquePipelineLayout {
   vk::PushConstantRange const pcRange {
       .stageFlags = vk::ShaderStageFlagBits::eVertex,
       .size = sizeof(pbr::ModelPushConstant),
@@ -163,15 +165,16 @@ constexpr auto createGeometryPipelineLayout(
                                                         .setPushConstantRanges(pcRange));
 }
 [[nodiscard]]
-constexpr auto createLightingPipelineLayout(
-    pbr::core::GpuHandle const& gpu,
-    std::span<vk::DescriptorSetLayout const> descLayouts) -> vk::UniquePipelineLayout {
+constexpr auto
+createLightingPipelineLayout(pbr::core::GpuHandle const& gpu,
+                             std::span<vk::DescriptorSetLayout const> descLayouts)
+    -> vk::UniquePipelineLayout {
   return gpu.getDevice().createPipelineLayoutUnique(
       vk::PipelineLayoutCreateInfo {}.setSetLayouts(descLayouts));
 }
 [[nodiscard]]
-constexpr auto
-buildGeometryPipeline(pbr::PbrRenderSystemCreateInfo info) -> pbr::core::PipelineBuilder {
+constexpr auto buildGeometryPipeline(pbr::PbrRenderSystemCreateInfo info)
+    -> pbr::core::PipelineBuilder {
   return pbr::core::PipelineBuilder()
       .addStage(info.geometryVertexShader)
       .addStage(info.geometryFragmentShader)
@@ -183,8 +186,8 @@ buildGeometryPipeline(pbr::PbrRenderSystemCreateInfo info) -> pbr::core::Pipelin
       .enableBackFaceCulling(vk::FrontFace::eClockwise);
 }
 [[nodiscard]]
-constexpr auto
-buildLightingPipeline(pbr::PbrRenderSystemCreateInfo info) -> pbr::core::PipelineBuilder {
+constexpr auto buildLightingPipeline(pbr::PbrRenderSystemCreateInfo info)
+    -> pbr::core::PipelineBuilder {
   return pbr::core::PipelineBuilder()
       .addStage(info.lightingVertexShader)
       .addStage(info.lightingFragmentShader)
@@ -287,16 +290,16 @@ constexpr auto switchGBufferToSampled(vk::CommandBuffer cmdBuffer,
 constexpr auto switchRenderTargetToAttachment(vk::CommandBuffer cmdBuffer,
                                               pbr::Image2D const& renderTarget) -> void {
   vk::ImageMemoryBarrier2 const imageBarrier {
-    .srcStageMask = vk::PipelineStageFlagBits2::eTopOfPipe,
-    .dstStageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput,
-    .dstAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite,
-    .newLayout = vk::ImageLayout::eColorAttachmentOptimal,
-    .image = renderTarget.getImage(),
-    .subresourceRange {
-      .aspectMask = vk::ImageAspectFlagBits::eColor,
-      .levelCount = 1,
-      .layerCount = 1,
-    },
+      .srcStageMask = vk::PipelineStageFlagBits2::eTopOfPipe,
+      .dstStageMask = vk::PipelineStageFlagBits2::eColorAttachmentOutput,
+      .dstAccessMask = vk::AccessFlagBits2::eColorAttachmentWrite,
+      .newLayout = vk::ImageLayout::eColorAttachmentOptimal,
+      .image = renderTarget.getImage(),
+      .subresourceRange {
+          .aspectMask = vk::ImageAspectFlagBits::eColor,
+          .levelCount = 1,
+          .layerCount = 1,
+      },
   };
   cmdBuffer.pipelineBarrier2(vk::DependencyInfo {
       .dependencyFlags = vk::DependencyFlagBits::eByRegion,
@@ -336,8 +339,8 @@ pbr::PbrRenderSystem::PbrRenderSystem(core::SharedGpuHandle gpu,
   _lightingPipeline = std::move(pipelines.back());
 }
 
-auto pbr::PbrRenderSystem::allocateGBuffer(IAllocator& allocator,
-                                           vk::Extent2D extent) -> GBuffer {
+auto pbr::PbrRenderSystem::allocateGBuffer(IAllocator& allocator, vk::Extent2D extent)
+    -> GBuffer {
   return {
       *_gpu,
       allocator,
@@ -362,8 +365,8 @@ auto pbr::PbrRenderSystem::render(vk::CommandBuffer cmdBuffer, Scene const& scen
 }
 
 auto pbr::PbrRenderSystem::recordGeometryPass(vk::CommandBuffer cmdBuffer,
-                                              Scene const& scene,
-                                              GBuffer const& gBuffer) -> void {
+                                              Scene const& scene, GBuffer const& gBuffer)
+    -> void {
   std::array const attachments {
       vk::RenderingAttachmentInfo {
           .imageView = gBuffer.getPositions().getImageView(),
@@ -426,25 +429,35 @@ auto pbr::PbrRenderSystem::recordGeometryPass(vk::CommandBuffer cmdBuffer,
                                .maxDepth = 1.0f,
                            });
   cmdBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, _geometryPipeline.get());
-  cmdBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, _geometryLayout.get(), 0,
-                               scene.camera->getDescriptorSet(), {});
 
-  for (auto const& mesh : scene.meshes) {
-    auto const pushConst = pbr::makeModelPushConstant(
-        mesh.transform.position, mesh.transform.rotation, mesh.transform.scale);
-    cmdBuffer.pushConstants<ModelPushConstant>(
-        _geometryLayout.get(), vk::ShaderStageFlagBits::eVertex, 0, pushConst);
+  auto const camera = scene.findCamera();
 
-    cmdBuffer.bindVertexBuffers(0, mesh.mesh->getVertexBuffer().getBuffer(), {0});
-    cmdBuffer.bindIndexBuffer(mesh.mesh->getIndexBuffer().getBuffer(), 0,
-                              vk::IndexType::eUint16);
+  if (camera) {
+    cmdBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, _geometryLayout.get(),
+                                 0, camera.value()->getDescriptorSet(), {});
+  }
 
-    for (auto const& primitive : mesh.mesh->getPrimitives()) {
-      cmdBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
-                                   _geometryLayout.get(), 1,
-                                   primitive.material->getDescriptorSet(), {});
-      cmdBuffer.drawIndexed(primitive.indexCount, 1, primitive.firstIndex,
-                            static_cast<std::int32_t>(primitive.firstVertex), 0);
+  for (auto const& node : scene.iterateNodes()) {
+    auto const& mesh = node.getMesh();
+    if (mesh) {
+
+      auto const transform = node.getTransform();
+      auto const pushConst = pbr::makeModelPushConstant(
+          transform.position, transform.rotation, transform.scale);
+      cmdBuffer.pushConstants<ModelPushConstant>(
+          _geometryLayout.get(), vk::ShaderStageFlagBits::eVertex, 0, pushConst);
+
+      cmdBuffer.bindVertexBuffers(0, mesh->getVertexBuffer().getBuffer(), {0});
+      cmdBuffer.bindIndexBuffer(mesh->getIndexBuffer().getBuffer(), 0,
+                                vk::IndexType::eUint16);
+
+      for (auto const& primitive : mesh->getPrimitives()) {
+        cmdBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics,
+                                     _geometryLayout.get(), 1,
+                                     primitive.material->getDescriptorSet(), {});
+        cmdBuffer.drawIndexed(primitive.indexCount, 1, primitive.firstIndex,
+                              static_cast<std::int32_t>(primitive.firstVertex), 0);
+      }
     }
   }
 
@@ -473,12 +486,16 @@ auto pbr::PbrRenderSystem::recordLightingPass(vk::CommandBuffer cmdBuffer,
 
   cmdBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, _lightingPipeline.get());
 
-  std::array const descSets {scene.camera->getDescriptorSet(),
-                             gBuffer.getDescriptorSet()};
-  cmdBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, _lightingLayout.get(), 0,
-                               descSets, {});
+  auto const camera = scene.findCamera();
 
-  cmdBuffer.draw(3, 1, 0, 0);
+  if (camera) {
+    std::array const descSets {camera.value()->getDescriptorSet(),
+                               gBuffer.getDescriptorSet()};
+    cmdBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, _lightingLayout.get(),
+                                 0, descSets, {});
 
-  cmdBuffer.endRendering();
+    cmdBuffer.draw(3, 1, 0, 0);
+
+    cmdBuffer.endRendering();
+  }
 }
