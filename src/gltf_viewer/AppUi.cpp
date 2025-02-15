@@ -13,6 +13,7 @@ app::AppUi::AppUi() {
   style.TabBorderSize = 1.0f;
   style.TabBorderSize = 1.0f;
   style.WindowRounding = ROUNDING;
+  style.ChildRounding = ROUNDING;
   style.FrameRounding = ROUNDING;
   style.PopupRounding = ROUNDING;
   style.ScrollbarRounding = ROUNDING;
