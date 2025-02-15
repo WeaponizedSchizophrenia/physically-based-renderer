@@ -19,5 +19,6 @@ target_link_libraries(gltf_viewer PRIVATE
 )
 target_sources(gltf_viewer PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}/ui/PerformanceOverlay.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/ui/SceneTree.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/AppUi.cpp
 )

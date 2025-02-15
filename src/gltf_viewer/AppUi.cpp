@@ -24,5 +24,6 @@ app::AppUi::AppUi() {
 }
 
 auto app::AppUi::render(std::chrono::nanoseconds deltaTime) -> void {
-  _performanceOverlay.render(deltaTime);
+  performanceOverlay.render(deltaTime);
+  sceneTree.render(deltaTime);
 }

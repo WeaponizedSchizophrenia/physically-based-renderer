@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ui/PerformanceOverlay.hpp"
+#include "ui/SceneTree.hpp"
 
 #include <chrono>
 
@@ -9,10 +10,9 @@ class AppUi {
 public:
   static constexpr auto ROUNDING = 4.0f;
 
-private:
-  ui::PerformanceOverlay _performanceOverlay {};
+  ui::PerformanceOverlay performanceOverlay {};
+  ui::SceneTree sceneTree {};
 
-public:
   AppUi();
 
   auto render(std::chrono::nanoseconds deltaTime) -> void;

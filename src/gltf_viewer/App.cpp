@@ -274,6 +274,7 @@ app::App::App(std::filesystem::path path, bool vkValidation)
           *_allocator, pbr::utils::toExtent(_window->getFramebufferSize())))
     , _submitter(_gpu) {
   setupWindowCallbacks();
+  setupUi();
 
   _logger->info("Initialized app to view {}", _path.c_str());
   if (vkValidation) {
@@ -358,6 +359,10 @@ auto app::App::setupWindowCallbacks() -> void {
                                           std::uint32_t character) {
     ImGui_ImplGlfw_CharCallback(window, static_cast<unsigned int>(character));
   };
+}
+
+auto app::App::setupUi() -> void {
+  _ui.sceneTree.setScene(&_scene);
 }
 
 auto app::App::makeAsyncSubmitInfo() -> pbr::AsyncSubmitInfo {
