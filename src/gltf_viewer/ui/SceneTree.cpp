@@ -20,6 +20,9 @@ auto app::ui::SceneTree::setScene(pbr::Scene* scene) noexcept -> void {
 
 auto app::ui::SceneTree::render([[maybe_unused]] std::chrono::nanoseconds deltaTime)
     -> void {
+  auto const [vpWidth, vpHeight] = ImGui::GetMainViewport()->Size;
+  ImGui::SetNextWindowSize(ImVec2(vpWidth * 0.5f, vpHeight * 0.5f),
+                           ImGuiCond_FirstUseEver);
   if (ImGui::Begin("Scene tree", &_open)) {
     auto const [width, height] = ImGui::GetWindowSize();
 
