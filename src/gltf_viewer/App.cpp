@@ -38,6 +38,7 @@
 #include <fstream>
 #include <ios>
 #include <memory>
+#include <memory_resource>
 #include <ranges>
 #include <stdexcept>
 #include <string_view>
@@ -159,13 +160,13 @@ constexpr auto createPbrRenderSystem(pbr::core::SharedGpuHandle gpu)
 [[nodiscard]]
 constexpr auto loadScene(std::filesystem::path const& path,
                          pbr::gltf::AssetDependencies dependencies,
-                         vk::CommandPool cmdPool) -> pbr::Scene {
+                         vk::CommandPool cmdPool, std::pmr::polymorphic_allocator<> alloc) -> pbr::Scene {
   pbr::TransferStager stager(dependencies.gpu, dependencies.allocator);
 
   pbr::gltf::Loader loader;
   auto asset = loader.loadAsset(path, std::move(dependencies));
 
-  auto scene = asset.loadScene(stager, 0);
+  auto scene = asset.loadScene(stager, 0, alloc);
 
   stager.submit(cmdPool);
   stager.wait();
@@ -256,6 +257,7 @@ app::App::App(std::filesystem::path path, bool vkValidation)
     , _pbrPipeline(::createPbrPipeline(*_gpu, _surface.getFormat().format))
     , _pbrSystem(::createPbrRenderSystem(_gpu))
     , _tonemapper(::createTonemapper(_gpu))
+    , _sceneMemory()
     , _scene(::loadScene(
           _path,
           {
@@ -265,7 +267,7 @@ app::App::App(std::filesystem::path path, bool vkValidation)
               .materialAllocator {_gpu, _descPool.get(),
                                   _pbrPipeline.getMaterialSetLayout()},
           },
-          _commandPool.get()))
+          _commandPool.get(), &_sceneMemory))
     , _gBuffer(_pbrSystem.allocateGBuffer(
           *_allocator, pbr::utils::toExtent(_window->getFramebufferSize())))
     , _hdrImage(_tonemapper.allocateHdrImage(

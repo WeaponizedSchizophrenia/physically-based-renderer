@@ -8,7 +8,16 @@
 #include <optional>
 #include <utility>
 
-pbr::Node::Node(Transform transform) noexcept : _transform(transform) {}
+pbr::Node::Node(allocator_type alloc) : _children(alloc) {}
+
+pbr::Node::Node(Transform transform, allocator_type alloc)
+    : _children(alloc), _transform(transform) {}
+
+pbr::Node::Node(Node&& node, allocator_type alloc) noexcept
+    : _children(std::move(node._children), alloc)
+    , _transform(node._transform)
+    , _mesh(std::move(node._mesh))
+    , _camera(std::move(node._camera)) {}
 
 auto pbr::Node::getTransform() const noexcept -> Transform { return _transform; }
 
@@ -48,6 +57,8 @@ auto pbr::Node::addChild(Node node) -> Node& {
   _children.emplace_back(std::move(node));
   return _children.back();
 }
+
+pbr::Scene::Scene(allocator_type alloc) : _nodes(alloc) {}
 
 auto pbr::Scene::iterateNodes() const -> std::generator<Node const&> {
   for (auto const& node : _nodes) {

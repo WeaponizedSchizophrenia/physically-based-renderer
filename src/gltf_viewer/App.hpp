@@ -24,6 +24,7 @@
 #include <filesystem>
 #include <memory>
 
+#include <memory_resource>
 #include <spdlog/logger.h>
 
 #include "AppUi.hpp"
@@ -51,6 +52,7 @@ class App {
   pbr::PbrRenderSystem _pbrSystem;
   pbr::TonemapperSystem _tonemapper;
 
+  std::pmr::synchronized_pool_resource _sceneMemory;
   pbr::Scene _scene;
 
   // Frame data
@@ -63,8 +65,8 @@ public:
 
   App(const App&) = delete;
   auto operator=(const App&) -> App& = delete;
-  App(App&&) = default;
-  auto operator=(App&&) -> App& = default;
+  App(App&&) = delete;
+  auto operator=(App&&) -> App& = delete;
 
   ~App() noexcept;
 

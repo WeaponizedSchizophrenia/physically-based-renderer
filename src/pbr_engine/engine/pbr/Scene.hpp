@@ -5,6 +5,7 @@
 
 #include <generator>
 #include <memory>
+#include <memory_resource>
 #include <optional>
 #include <vector>
 
@@ -19,13 +20,24 @@ struct Transform {
   glm::vec3 scale {1.0f};
 };
 class Node {
-  std::vector<Node> _children;
+  std::pmr::vector<Node> _children;
   Transform _transform {};
   std::shared_ptr<Mesh> _mesh = nullptr;
   std::shared_ptr<CameraUniform> _camera = nullptr;
 
 public:
-  explicit Node(Transform transform = {}) noexcept;
+  using allocator_type = std::pmr::polymorphic_allocator<>;
+
+  explicit Node(allocator_type alloc = {});
+  explicit Node(Transform transform, allocator_type alloc = {});
+
+  Node(const Node&) = delete;
+  auto operator=(const Node&) -> Node& = delete;
+
+  Node(Node&& node, allocator_type alloc = {}) noexcept;
+  auto operator=(Node&&) -> Node& = default;
+
+  ~Node() = default;
 
   [[nodiscard]]
   auto getTransform() const noexcept -> Transform;
@@ -61,6 +73,10 @@ class Scene {
   std::pmr::vector<Node> _nodes;
 
 public:
+  using allocator_type = std::pmr::polymorphic_allocator<>;
+
+  explicit Scene(allocator_type alloc = {});
+
   [[nodiscard]]
   auto iterateNodes() const -> std::generator<Node const&>;
 

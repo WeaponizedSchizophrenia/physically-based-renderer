@@ -15,6 +15,7 @@
 
 #include <cstddef>
 #include <memory>
+#include <memory_resource>
 #include <string>
 #include <unordered_map>
 
@@ -68,6 +69,6 @@ public:
   [[nodiscard]]
   auto loadMesh(TransferStager& stager, std::size_t index) -> std::shared_ptr<Mesh>;
 
-  auto loadScene(TransferStager& stager, std::size_t index) -> Scene;
+  auto loadScene(TransferStager& stager, std::size_t index, std::pmr::polymorphic_allocator<> alloc = {}) -> Scene;
 };
 } // namespace pbr::gltf

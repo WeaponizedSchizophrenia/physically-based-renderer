@@ -24,6 +24,7 @@
 #include <format>
 #include <iterator>
 #include <memory>
+#include <memory_resource>
 #include <print>
 #include <span>
 #include <stdexcept>
@@ -230,8 +231,8 @@ auto pbr::gltf::Asset::loadMesh(TransferStager& stager, std::size_t index)
   return mesh;
 }
 
-auto pbr::gltf::Asset::loadScene(TransferStager& stager, std::size_t index) -> Scene {
-  Scene scene;
+auto pbr::gltf::Asset::loadScene(TransferStager& stager, std::size_t index, std::pmr::polymorphic_allocator<> alloc) -> Scene {
+  Scene scene(alloc);
   scene.addNode(Node()).setCamera(
       std::make_shared<CameraUniform>(*_dependencies.gpu, *_dependencies.allocator,
                                       _dependencies.cameraAllocator.allocate()));
