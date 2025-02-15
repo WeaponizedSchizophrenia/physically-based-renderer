@@ -56,12 +56,12 @@ public:
   auto loadImage2D(TransferStager& stager, std::size_t index) -> std::shared_ptr<Image2D>;
 
   [[nodiscard]]
-  auto loadMaterial(TransferStager& stager,
-                    std::size_t index) -> std::shared_ptr<Material>;
+  auto loadMaterial(TransferStager& stager, std::size_t index)
+      -> std::shared_ptr<Material>;
 
   [[nodiscard]]
-  auto loadPrimitive(TransferStager& stager,
-                     fastgltf::Primitive const& primitive) -> MeshBuilder::Primitive;
+  auto loadPrimitive(TransferStager& stager, fastgltf::Primitive const& primitive)
+      -> MeshBuilder::Primitive;
 
   /**
    * Builds a mesh from the contained gltf asset mesh at index.
@@ -69,6 +69,12 @@ public:
   [[nodiscard]]
   auto loadMesh(TransferStager& stager, std::size_t index) -> std::shared_ptr<Mesh>;
 
-  auto loadScene(TransferStager& stager, std::size_t index, std::pmr::polymorphic_allocator<> alloc = {}) -> Scene;
+  [[nodiscard]]
+  auto loadNode(TransferStager& stager, std::size_t index,
+                std::pmr::polymorphic_allocator<> alloc = {}) -> Node;
+
+  [[nodiscard]]
+  auto loadScene(TransferStager& stager, std::size_t index,
+                 std::pmr::polymorphic_allocator<> alloc = {}) -> Scene;
 };
 } // namespace pbr::gltf

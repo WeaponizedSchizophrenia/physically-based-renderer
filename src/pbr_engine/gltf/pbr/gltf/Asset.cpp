@@ -19,7 +19,6 @@
 #include <cassert>
 #include <cstddef>
 #include <cstring>
-#include <fastgltf/math.hpp>
 #include <filesystem>
 #include <format>
 #include <iterator>
@@ -34,12 +33,14 @@
 #include <vector>
 
 #include <fastgltf/glm_element_traits.hpp>
+#include <fastgltf/math.hpp>
 #include <fastgltf/tools.hpp>
 #include <fastgltf/types.hpp>
 #include <fastgltf/util.hpp>
 
 #include <glm/ext/vector_float2.hpp>
 #include <glm/ext/vector_float3.hpp>
+#include <glm/gtc/constants.hpp>
 
 namespace constants {
 static constexpr auto POSITION_NAME = "POSITION";
@@ -231,28 +232,40 @@ auto pbr::gltf::Asset::loadMesh(TransferStager& stager, std::size_t index)
   return mesh;
 }
 
-auto pbr::gltf::Asset::loadScene(TransferStager& stager, std::size_t index, std::pmr::polymorphic_allocator<> alloc) -> Scene {
+auto pbr::gltf::Asset::loadNode(TransferStager& stager, std::size_t index,
+                                std::pmr::polymorphic_allocator<> alloc) -> Node {
+  auto const& gltfNode = _asset.nodes.at(index);
+  auto const trs = std::get<fastgltf::TRS>(gltfNode.transform);
+  Transform const transform {
+      .position {trs.translation.x(), trs.translation.y(), trs.translation.z()},
+      .rotation {trs.rotation.w(), trs.rotation.x(), trs.rotation.y(), trs.rotation.z()},
+      .scale {trs.scale.x(), trs.scale.y(), trs.scale.z()},
+  };
+
+  Node node(transform, alloc);
+
+  for (auto const childIdx : gltfNode.children) {
+    node.addChild(loadNode(stager, childIdx, alloc));
+  }
+
+  if (gltfNode.meshIndex) {
+    node.setMesh(loadMesh(stager, *gltfNode.meshIndex));
+  }
+
+  return node;
+}
+
+auto pbr::gltf::Asset::loadScene(TransferStager& stager, std::size_t index,
+                                 std::pmr::polymorphic_allocator<> alloc) -> Scene {
   Scene scene(alloc);
   scene.addNode(Node()).setCamera(
       std::make_shared<CameraUniform>(*_dependencies.gpu, *_dependencies.allocator,
                                       _dependencies.cameraAllocator.allocate()));
-  fastgltf::iterateSceneNodes(
-      _asset, index, fastgltf::math::fmat4x4(),
-      [&](fastgltf::Node const& node, fastgltf::math::fmat4x4 const& model) {
-        fastgltf::math::fvec3 position {};
-        fastgltf::math::fquat rotation {};
-        fastgltf::math::fvec3 scale {};
-        fastgltf::math::decomposeTransformMatrix(model, scale, rotation, position);
-        Transform const transform {
-            .position {position.x(), position.y(), position.z()},
-            .rotation {rotation.w(), rotation.x(), rotation.y(), rotation.z()},
-            .scale {scale.x(), scale.y(), scale.z()},
-        };
-        auto& nodeRef = scene.addNode(Node(transform));
 
-        if (node.meshIndex.has_value()) {
-          nodeRef.setMesh(loadMesh(stager, *node.meshIndex));
-        }
-      });
+  auto const& gltfScene = _asset.scenes.at(index);
+  for (auto const nodeIdx : gltfScene.nodeIndices) {
+    scene.addNode(loadNode(stager, nodeIdx, alloc));
+  }
+
   return scene;
 }
