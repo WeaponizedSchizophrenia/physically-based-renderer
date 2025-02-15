@@ -303,7 +303,7 @@ auto app::App::run() -> void {
     if (auto const camera = _scene.findCamera(); camera) {
       camera.value()->set(_controller.getCameraData());
     }
-    for (auto& node : _scene.iterateNodes() | std::views::filter([](auto const& node) {
+    for (auto& node : _scene.iterateAllNodes() | std::views::filter([](auto const& node) {
                         return node.getMesh() != nullptr;
                       }) | std::views::take(9)) {
       auto transform = node.getTransform();

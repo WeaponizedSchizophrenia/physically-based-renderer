@@ -7,6 +7,8 @@
 #include <memory>
 #include <memory_resource>
 #include <optional>
+#include <span>
+#include <string>
 #include <vector>
 
 #include <glm/ext/matrix_transform.hpp>
@@ -20,6 +22,7 @@ struct Transform {
   glm::vec3 scale {1.0f};
 };
 class Node {
+  std::pmr::string _name;
   std::pmr::vector<Node> _children;
   Transform _transform {};
   std::shared_ptr<Mesh> _mesh = nullptr;
@@ -28,8 +31,8 @@ class Node {
 public:
   using allocator_type = std::pmr::polymorphic_allocator<>;
 
-  explicit Node(allocator_type alloc = {});
-  explicit Node(Transform transform, allocator_type alloc = {});
+  explicit Node(std::pmr::string name, allocator_type alloc = {});
+  explicit Node(std::pmr::string name, Transform transform, allocator_type alloc = {});
 
   Node(const Node&) = delete;
   auto operator=(const Node&) -> Node& = delete;
@@ -38,6 +41,15 @@ public:
   auto operator=(Node&&) -> Node& = default;
 
   ~Node() = default;
+
+  [[nodiscard]]
+  auto getName() const noexcept -> std::pmr::string const&;
+
+  [[nodiscard]]
+  auto getChildren() const noexcept -> std::span<Node const>;
+
+  [[nodiscard]]
+  auto getChildren() noexcept -> std::span<Node>;
 
   [[nodiscard]]
   auto getTransform() const noexcept -> Transform;
@@ -78,10 +90,16 @@ public:
   explicit Scene(allocator_type alloc = {});
 
   [[nodiscard]]
-  auto iterateNodes() const -> std::generator<Node const&>;
+  auto iterateAllNodes() const -> std::generator<Node const&>;
 
   [[nodiscard]]
-  auto iterateNodes() -> std::generator<Node&>;
+  auto iterateAllNodes() -> std::generator<Node&>;
+
+  [[nodiscard]]
+  auto getTopLevelNodes() const noexcept -> std::span<Node const>;
+
+  [[nodiscard]]
+  auto getTopLevelNodes() noexcept -> std::span<Node>;
 
   [[nodiscard]]
   auto findCamera() const -> std::optional<std::shared_ptr<CameraUniform>>;

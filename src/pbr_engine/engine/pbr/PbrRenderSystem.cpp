@@ -437,7 +437,7 @@ auto pbr::PbrRenderSystem::recordGeometryPass(vk::CommandBuffer cmdBuffer,
                                  0, camera.value()->getDescriptorSet(), {});
   }
 
-  for (auto const& node : scene.iterateNodes()) {
+  for (auto const& node : scene.iterateAllNodes()) {
     auto const& mesh = node.getMesh();
     if (mesh) {
 

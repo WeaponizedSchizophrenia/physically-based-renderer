@@ -27,6 +27,7 @@
 #include <print>
 #include <span>
 #include <stdexcept>
+#include <string>
 #include <string_view>
 #include <utility>
 #include <variant>
@@ -242,7 +243,7 @@ auto pbr::gltf::Asset::loadNode(TransferStager& stager, std::size_t index,
       .scale {trs.scale.x(), trs.scale.y(), trs.scale.z()},
   };
 
-  Node node(transform, alloc);
+  Node node(std::pmr::string(gltfNode.name, alloc), transform, alloc);
 
   for (auto const childIdx : gltfNode.children) {
     node.addChild(loadNode(stager, childIdx, alloc));
@@ -258,9 +259,10 @@ auto pbr::gltf::Asset::loadNode(TransferStager& stager, std::size_t index,
 auto pbr::gltf::Asset::loadScene(TransferStager& stager, std::size_t index,
                                  std::pmr::polymorphic_allocator<> alloc) -> Scene {
   Scene scene(alloc);
-  scene.addNode(Node()).setCamera(
-      std::make_shared<CameraUniform>(*_dependencies.gpu, *_dependencies.allocator,
-                                      _dependencies.cameraAllocator.allocate()));
+  scene.addNode(Node(std::pmr::string("DefaultCamera", alloc), alloc))
+      .setCamera(
+          std::make_shared<CameraUniform>(*_dependencies.gpu, *_dependencies.allocator,
+                                          _dependencies.cameraAllocator.allocate()));
 
   auto const& gltfScene = _asset.scenes.at(index);
   for (auto const nodeIdx : gltfScene.nodeIndices) {
